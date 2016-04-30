@@ -13,3 +13,7 @@ remove them from rotation and prevent them from being served.
 ### Dependencies
 
     $ pip install flask
+
+### Configuration
+
+Set appropriate values in `example-settings.py` and save as `settings.py`.
