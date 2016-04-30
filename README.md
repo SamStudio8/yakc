@@ -8,3 +8,8 @@ view moderated ones. Quorum is one; this may change at a later date.
 
 Users can also report particularly bad webms, which will immediately
 remove them from rotation and prevent them from being served.
+
+## Housekeeping
+### Dependencies
+
+    $ pip install flask
