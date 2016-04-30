@@ -10,15 +10,14 @@ import socket
 import os
 from time import strftime
 
+app = Flask(__name__)
+
 try:
     from raven.contrib.flask import Sentry
 except ImportError:
     pass
 else:
     sentry = Sentry(app)
-
-app = Flask(__name__)
-
 
 delta = 0
 
