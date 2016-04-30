@@ -3,6 +3,7 @@ from flask import (Flask, send_from_directory, abort,
 from flask_sqlalchemy import SQLAlchemy
 from random import choice, random
 from uuid import uuid4
+from datetime import datetime
 import json
 import logging
 from hashlib import sha256
@@ -15,6 +16,62 @@ import settings as SETTINGS
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = SETTINGS.DATABASE_URI
 db = SQLAlchemy(app)
+
+class Video(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    path = db.Column(db.String(255))
+    name = db.Column(db.String(255), unique=True)
+    score = db.Column(db.Integer)
+    nsfw = db.Column(db.Boolean)
+
+    def __init__(self, path, name, score=0, nsfw=False):
+        self.path = path
+        self.name = name
+        self.score = score
+        self.nsfw = False
+
+    def __repr__(self):
+        return '<Video %r (%d)>' % (self.name, self.score)
+
+class Address(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    address = db.Column(db.String(64), unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    def __init__(self, address, user=None):
+        self.address= address
+        self.user = user
+
+    def __repr__(self):
+        if self.user:
+            un = self.user.username
+        else:
+            un = "?"
+        return '<IP %r (%s)>' % (self.address, un)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True)
+    addresses = db.relationship('Address', backref='user', lazy='dynamic')
+
+    def __init__(self, username):
+        self.username = username
+
+    def __repr__(self):
+        return '<User %r>' % self.username
+
+class Action(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
+    action = db.Column(db.Enum("promote", "demote", name="action_type_enum"))
+    timestamp = db.Column(db.DateTime)
+
+    def __init__(self, user, video, action):
+        self.user = user
+        self.video = video
+        self.action = action
+        self.timestamp = datetime.utcnow()
 
 try:
     from raven.contrib.flask import Sentry
@@ -109,13 +166,13 @@ def is_votable(webm):
 
 
 def get_log(webm):
-    try:
-        fp = open('webms/metadata/' + webm, 'r')
-        string = fp.read()
-        fp.close()
-        return string
-    except IOError:
-        return None
+    #try:
+    #    fp = open('webms/metadata/' + webm, 'r')
+    #    string = fp.read()
+    #    fp.close()
+    #    return string
+    #except IOError:
+    return None
 
 
 def get_name(webm):
@@ -125,15 +182,20 @@ def get_name(webm):
 def generate_webm_token(webm, salt=None):
     if not salt:
         salt = uuid4().hex
-    return sha256(app.secret_key.encode() + webm.encode() + salt).hexdigest()+ ':' + salt
+    return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
 
 
 def get_all_webms():
-    return os.listdir('webms/all')
+    return Video.query.all()
 
+def get_video(name):
+    try:
+        return Video.query.filter(Video.name == name)[0]
+    except IndexError:
+        return None
 
 def get_good_webms():
-    return os.listdir('webms/good')
+    return Video.query.filter(Video.score > 0).all()
 
 def get_music_webms():
     return os.listdir('webms/music')
@@ -148,12 +210,11 @@ def get_vetoed_webms():
 
 
 def get_bad_webms():
-    return os.listdir('webms/bad')
+    return Video.query.filter(Video.score < 0).all()
 
 
 def get_safe_webms():
-    return list(set(get_all_webms()) - set(get_trash_webms()))
-
+    return Video.query.filter(Video.nsfw == False).all()
 
 def get_quality_webms():
     """Allows whitelisting of reports to stop the top-tier webms being 403'd"""
@@ -161,8 +222,7 @@ def get_quality_webms():
 
 
 def get_pending_webms():
-    return list(set(get_safe_webms()) - set(get_good_webms()) - set(get_bad_webms()))
-
+    return Video.query.filter(Video.score == 0).all()
 
 def get_trash_webms():
     return os.listdir('webms/trash')
@@ -197,17 +257,18 @@ def delete_holding_queue():
 def serve_webm(name, domain=None):
     if request.accept_mimetypes.best_match(['video/webm', 'text/html']) == 'text/html':
         return redirect(name)
-    name = name + '.webm'
-    if name not in get_all_webms():
+
+    webm = get_video(name)
+    if not webm:
         abort(404)
 
-    if name in get_trash_webms():
-        if name not in get_quality_webms():
-            add_log(name, 'was blocked from viewing')
-            abort(403, 'webm was reported')
+    #if name in get_trash_webms():
+    #    if name not in get_quality_webms():
+    #        add_log(name, 'was blocked from viewing')
+    #        abort(403, 'webm was reported')
 
-    add_log(name, 'viewed')
-    return send_from_directory('webms/all', name)
+    #add_log(name, 'viewed')
+    return send_from_directory('webms/all', name+".webm")
 
 
 @app.route('/<name>', subdomain='<domain>')
@@ -239,10 +300,7 @@ def serve_random():
         webm = choice(pending)
     except IndexError:
         pass
-        # abort(404)
-#    if random() > 0.9:
-#        return send_from_directory('webms', 'neil.jpg')
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), debug=get_log(webm), stats=get_stats(), unpromotable=is_unpromotable(webm))
+    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), debug=get_log(webm), stats=get_stats(), unpromotable=is_unpromotable(webm))
 
 
 @app.route('/', subdomain='good')
