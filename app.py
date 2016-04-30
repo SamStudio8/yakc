@@ -28,7 +28,10 @@ def map_ips(ip, default):
 
 
 def get_ip():
-    return request.environ.get('HTTP_X_REAL_IP')
+    ip = request.environ.get('HTTP_X_REAL_IP')
+    if not ip:
+        ip = request.remote_addr
+    return ip
 
 
 def add_log(webm, action):
@@ -63,6 +66,7 @@ def is_unpromotable(webm):
         return 'this video has been vetoed'
     user = get_ip()
     user = map_ips(user, user)
+
     if user == '(central)':
         return 'this shared IP address is banned'
     if user.startswith('94.119'):
@@ -460,8 +464,9 @@ def moderate_webm(domain=None):
 
 if __name__ == '__main__':
 
+    import settings as SETTINGS
     required_dirs = [
-        'webms'
+        'webms',
         'webms/good',
         'webms/bad',
         'webms/trash',
@@ -475,13 +480,16 @@ if __name__ == '__main__':
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-    # probably should make this persist
     app.config.update(
-        SECRET_KEY=uuid4().hex,
-        SERVER_NAME='webm.website'
+        SECRET_KEY=SETTINGS.SECRET_KEY,
+        SERVER_NAME=SETTINGS.SERVER_NAME
     )
 
-    log = logging.getLogger('werkzeug')
-    log.setLevel(logging.WARNING)
+    if SETTINGS.DEBUG:
+        app.debug = True
+        log = None
+    else:
+        log = logging.getLogger('werkzeug')
+        log.setLevel(logging.WARNING)
 
     app.run(host='0.0.0.0', port=3000)
