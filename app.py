@@ -1,5 +1,6 @@
 from flask import (Flask, send_from_directory, abort,
                   render_template, request, flash, redirect)
+from flask_sqlalchemy import SQLAlchemy
 from random import choice, random
 from uuid import uuid4
 import json
@@ -9,8 +10,11 @@ import shutil
 import socket
 import os
 from time import strftime
+import settings as SETTINGS
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = SETTINGS.DATABASE_URI
+db = SQLAlchemy(app)
 
 try:
     from raven.contrib.flask import Sentry
@@ -464,7 +468,6 @@ def moderate_webm(domain=None):
 
 if __name__ == '__main__':
 
-    import settings as SETTINGS
     required_dirs = [
         'webms',
         'webms/good',

@@ -12,7 +12,7 @@ remove them from rotation and prevent them from being served.
 ## Housekeeping
 ### Dependencies
 
-    $ pip install flask
+    $ pip install flask flask-sqlalchemy
 
 ### Configuration
 
