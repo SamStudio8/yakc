@@ -357,7 +357,7 @@ def serve_random():
         logger.debug("%s\tGET PENDING" % datetime.now().strftime("%H:%M:%S.%f"))
         pending = get_pending_webms()
         logger.debug("%s\tRANDOMIZE" % datetime.now().strftime("%H:%M:%S.%f"))
-        webm = pending[randint(0, len(pending)-1)]
+        webm = pending[randint(0, pending.count()-1)]
         logger.debug("%s\tSELECTED WEBM" % datetime.now().strftime("%H:%M:%S.%f"))
     except IndexError:
         pass
