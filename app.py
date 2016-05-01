@@ -243,6 +243,8 @@ def get_address_video_actions(raw_ip, webm_id):
         actions = [x[0] for x in Action.query.filter(Action.address_id.in_( address.user.addresses.with_entities(Address.id) ), Action.video_id == webm_id).with_entities(Action.action).all()]
     else:
         actions = [x[0] for x in Action.query.filter(Action.address_id == address.address, Action.video_id == webm_id).with_entities(Action.action).all()]
+    print address.address
+    print actions
     return actions
 
 
