@@ -33,6 +33,19 @@ class Video(db.Model):
     def __repr__(self):
         return '<Video %r (%d)>' % (self.name, self.score)
 
+    def make_history(self):
+        return "\n".join([str(x) for x in self.actions.all()])
+
+    def last_important_action_type(self):
+        try:
+            return self.actions.filter(app.Action.important == True).order_by("timestamp desc")[0].action
+        except IndexError:
+            return None
+
+def get_videos_of_type(action_type):
+    #TODO(samstudio8) gross.
+    return [a.video for a  in Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type).all()]
+
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address = db.Column(db.String(64), unique=True)
@@ -64,17 +77,22 @@ class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
-    action = db.Column(db.Enum("good", "bad", "view", name="action_type_enum"))
+    action = db.Column(db.Enum("view", "good", "bad", "held", "demote", name="action_type_enum"))
     timestamp = db.Column(db.DateTime)
+    important = db.Column(db.Boolean)
 
     address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
     video = db.relationship('Video', backref=db.backref('actions', lazy='dynamic'))
 
-    def __init__(self, address, video, action):
+    def __init__(self, address, video, action, important=False):
         self.address_id = address.id
         self.video_id = video.id
         self.action = action
         self.timestamp = datetime.utcnow()
+
+        if action in ["good", "bad", "held", "demote", "feature"]:
+            important = True
+        self.important = important
 
     def __repr__(self):
         stamp = self.timestamp.strftime('%Y-%m-%d %H:%M:%S')
@@ -143,6 +161,7 @@ def is_unpromotable(webm):
     #    return 'this shared IP address is banned'
     #if user.startswith('94.119'):
     #    return 'this shared IP address is banned'
+
     if "good" in actions:
         return 'cannot feature own videos'
     if "bad" in actions:
@@ -211,18 +230,16 @@ def get_address_video_actions(raw_ip, webm_id):
         actions = [x[0] for x in Action.query.filter(Action.address_id == address.address, Action.video_id == webm_id).with_entities(Action.action).all()]
     return actions
 
-def make_video_history(webm_id):
-    return "\n".join([str(x) for x in Action.query.filter(Action.video_id == webm_id).all()])
 
 def get_good_webms():
-    return Video.query.filter(Video.score > 1).all()
+    return get_videos_of_type("good")
 
 def get_music_webms():
     return os.listdir('webms/music')
 
 
 def get_best_webms():
-    return os.listdir('webms/best')
+    return Video.query.filter(Video.score > 9).all()
 
 
 def get_vetoed_webms():
@@ -248,7 +265,8 @@ def get_trash_webms():
     return os.listdir('webms/trash')
 
 
-def get_held_webms(): return os.listdir('webms/good2')
+def get_held_webms():
+    return get_videos_of_type("held")
 
 
 def get_unheld_good_webms():
@@ -321,8 +339,9 @@ def serve_random():
         webm = choice(pending)
     except IndexError:
         pass
-    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=make_video_history(webm.id), stats=get_stats(), unpromotable=is_unpromotable(webm))
+    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=webm.make_history(), stats=get_stats(), unpromotable=is_unpromotable(webm))
 
+#TODO(samstudio8) Currently always 404s
 @app.route('/', subdomain='good')
 def serve_good():
     global delta
@@ -340,7 +359,7 @@ def serve_good():
             best = True
     except IndexError:
         abort(404, 'You need to promote some webms!')
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), history=get_log(webm), debug=u'\u0394'+str(delta))
+    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), history=webm.make_history(), debug=u'\u0394'+str(delta))
 
 @app.route('/', subdomain='decent')
 def serve_all_good():
@@ -349,7 +368,7 @@ def serve_all_good():
         webm = choice(good)
     except IndexError:
         abort(404, 'There are no held webms.')
-    return render_template('display.html', webm=webm, queue='good', stats=get_stats(), history=get_log(webm))
+    return render_template('display.html', webm=webm.path, queue='good', stats=get_stats(), history=get_log(webm))
 
 
 @app.route('/', subdomain='best')
@@ -471,7 +490,7 @@ def moderate_webm(domain=None):
         if verdict == 'good':
             webm.score += 1
             #status = mark_good(webm)
-        elif verdict == 'bad':
+        elif verdict == 'demote':
             #status = mark_bad(webm)
             webm.score -= 1
         else:
