@@ -215,12 +215,16 @@ def get_video(name):
     except IndexError:
         return None
 
-#TODO(samstudio8) Create new user on failure
 def get_address(address):
     try:
         return Address.query.filter(Address.address == address)[0]
     except IndexError:
-        return None
+        # A new IP, how exciting (!)
+        #TODO(samstudio8) This is probably noteworthy of logging
+        new_address = Address(address)
+        db.session.add(new_address)
+        db.session.commit()
+        return new_address
 
 def get_address_video_actions(raw_ip, webm_id):
     address = get_address(raw_ip)
