@@ -64,7 +64,7 @@ class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
-    action = db.Column(db.Enum("good", "bad", name="action_type_enum"))
+    action = db.Column(db.Enum("good", "bad", "view", name="action_type_enum"))
     timestamp = db.Column(db.DateTime)
 
     address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
@@ -75,6 +75,14 @@ class Action(db.Model):
         self.video_id = video.id
         self.action = action
         self.timestamp = datetime.utcnow()
+
+    def __repr__(self):
+        stamp = self.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        if self.address.user:
+            un = self.address.user.username
+        else:
+            un = self.address.address
+        return "%s - %s by %s" % (stamp, self.action, un)
 
 try:
     from raven.contrib.flask import Sentry
@@ -135,7 +143,6 @@ def is_unpromotable(webm):
     #    return 'this shared IP address is banned'
     #if user.startswith('94.119'):
     #    return 'this shared IP address is banned'
-    print actions
     if "good" in actions:
         return 'cannot feature own videos'
     if "bad" in actions:
@@ -204,6 +211,8 @@ def get_address_video_actions(raw_ip, webm_id):
         actions = [x[0] for x in Action.query.filter(Action.address_id == address.address, Action.video_id == webm_id).with_entities(Action.action).all()]
     return actions
 
+def make_video_history(webm_id):
+    return "\n".join([str(x) for x in Action.query.filter(Action.video_id == webm_id).all()])
 
 def get_good_webms():
     return Video.query.filter(Video.score > 1).all()
@@ -272,13 +281,12 @@ def serve_webm(name, domain=None):
     webm = get_video(name)
     if not webm:
         abort(404, 'Cannot find that webm!')
+    #elif webm.reported:
+    #    abort(403, 'webm was reported')
 
-    #if name in get_trash_webms():
-    #    if name not in get_quality_webms():
-    #        add_log(name, 'was blocked from viewing')
-    #        abort(403, 'webm was reported')
-
-    #add_log(name, 'viewed')
+    address = Address.query.filter(Address.address == get_ip())[0]
+    db.session.add(Action(address, webm, 'view'))
+    db.session.commit()
     return send_from_directory('webms/all', name+".webm")
 
 
@@ -313,8 +321,7 @@ def serve_random():
         webm = choice(pending)
     except IndexError:
         pass
-    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=get_log(webm), stats=get_stats(), unpromotable=is_unpromotable(webm))
-
+    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=make_video_history(webm.id), stats=get_stats(), unpromotable=is_unpromotable(webm))
 
 @app.route('/', subdomain='good')
 def serve_good():
@@ -390,25 +397,6 @@ def serve_bad():
     except IndexError:
         abort(404, 'No webms have been marked bad.')
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='bad', count=len(webms), stats=get_stats())
-
-
-def mark_good(webm):
-    global delta;
-    add_log(webm, 'marked good')
-    delta += 1
-    os.symlink('webms/all/' + webm, 'webms/good/' + webm)
-
-
-def mark_bad(webm):
-    global delta;
-    if random() > 0.8:
-        # For a small percentage of "bad" moves, don't actually do it
-        # That way, some webms get a second chance
-        add_log(webm, 'marked bad (placebo)')
-    else:
-        delta -= 1
-        add_log(webm, 'marked bad')
-        os.symlink('webms/all/' + webm, 'webms/bad/' + webm)
 
 
 def mark_ugly(webm):
