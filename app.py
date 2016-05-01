@@ -24,27 +24,29 @@ except ImportError:
 else:
     sentry = Sentry(app)
 
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-import time
-import logging
+if SETTINGS.PERF_LOG:
+    #http://docs.sqlalchemy.org/en/rel_1_0/faq/performance.html
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+    import time
+    import logging
 
-logging.basicConfig()
-logger = logging.getLogger("myapp.sqltime")
-logger.setLevel(logging.DEBUG)
+    logging.basicConfig()
+    logger = logging.getLogger("myapp.sqltime")
+    logger.setLevel(logging.DEBUG)
 
-@event.listens_for(Engine, "before_cursor_execute")
-def before_cursor_execute(conn, cursor, statement,
-                        parameters, context, executemany):
-    conn.info.setdefault('query_start_time', []).append(time.time())
-    logger.debug("Start Query: %s", statement)
+    @event.listens_for(Engine, "before_cursor_execute")
+    def before_cursor_execute(conn, cursor, statement,
+            parameters, context, executemany):
+        conn.info.setdefault('query_start_time', []).append(time.time())
+        logger.debug("Start Query: %s", statement)
 
-@event.listens_for(Engine, "after_cursor_execute")
-def after_cursor_execute(conn, cursor, statement,
-                        parameters, context, executemany):
-    total = time.time() - conn.info['query_start_time'].pop(-1)
-    logger.debug("Query Complete!")
-    logger.debug("Total Time: %f", total)
+    @event.listens_for(Engine, "after_cursor_execute")
+    def after_cursor_execute(conn, cursor, statement,
+            parameters, context, executemany):
+        total = time.time() - conn.info['query_start_time'].pop(-1)
+        logger.debug("Query Complete!")
+        logger.debug("Total Time: %f", total)
 
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
