@@ -67,7 +67,7 @@ class Video(db.Model):
 
     def get_last_important_action_type(self):
         try:
-            return self.actions.filter(app.Action.important == True).order_by("timestamp desc")[0].action
+            return self.actions.filter(Action.important == True).order_by("timestamp desc")[0].action
         except IndexError:
             return None
 
@@ -110,8 +110,8 @@ class Action(db.Model):
     timestamp = db.Column(db.DateTime)
     important = db.Column(db.Boolean)
 
-    address = db.relationship('Address', backref=db.backref('actions', lazy='select'))
-    video = db.relationship('Video', backref=db.backref('actions', lazy='select'))
+    address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
+    video = db.relationship('Video', backref=db.backref('actions', lazy='dynamic'))
 
     def __init__(self, address, video, action, important=False):
         self.address_id = address.id
@@ -378,14 +378,15 @@ def serve_all_good():
 
 @app.route('/', subdomain='best')
 def serve_best():
-    try:
-        webm = choice(get_best_webms())
-    except IndexError:
+    best = get_videos_of_status("feature")
+    if len(best) == 0:
         abort(404, 'You need to feature some webms!')
-    if get_user_censured(webm):
-        return redirect('/', 302)
-    token = generate_webm_token(webm)
-    return render_template('display.html', webm=webm, queue='best', token=token, unpromotable=is_votable(webm))
+
+    webm = best[randint(0, len(best)-1)]
+
+    #if get_user_censured(webm):
+    #    return redirect('/', 302)
+    return render_template('display.html', webm=webm, queue='best', token=generate_webm_token(webm), unpromotable=is_votable(webm))
 
 
 @app.route('/', subdomain='top')
@@ -496,10 +497,10 @@ def moderate_webm(domain=None):
     if verdict == 'feature':
         if is_unpromotable(webm):
             abort(400, 'not allowed to feature')
-        if webm.get_last_important_action_type() is not "good":
+        if webm.get_last_important_action_type() != "good":
             abort(400, 'can only feature good webms')
     if verdict == 'shunt':
-        if webm.get_last_important_action_type() is not "good":
+        if webm.get_last_important_action_type() != "good":
             abort(400, 'can only shunt good webms')
         verdict = "music"
     """
