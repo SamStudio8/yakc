@@ -591,4 +591,4 @@ if __name__ == '__main__':
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.WARNING)
 
-    app.run(host='0.0.0.0', port=3000)
+    app.run(host='0.0.0.0', port=SETTINGS.SERVER_PORT)
