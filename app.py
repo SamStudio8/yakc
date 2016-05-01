@@ -36,14 +36,14 @@ class Video(db.Model):
     def make_history(self):
         return "\n".join([str(x) for x in self.actions.all()])
 
-    def last_important_action_type(self):
+    def get_last_important_action_type(self):
         try:
             return self.actions.filter(app.Action.important == True).order_by("timestamp desc")[0].action
         except IndexError:
             return None
 
-def get_videos_of_type(action_type):
-    #TODO(samstudio8) gross.
+def get_videos_of_status(action_type):
+    #TODO(samstudio8) [a for a in gross].
     return [a.video for a  in Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type).all()]
 
 class Address(db.Model):
@@ -232,23 +232,21 @@ def get_address_video_actions(raw_ip, webm_id):
 
 
 def get_good_webms():
-    return get_videos_of_type("good")
+    return get_videos_of_status("good")
 
 def get_music_webms():
-    return os.listdir('webms/music')
+    return get_videos_of_status("music")
 
 
 def get_best_webms():
-    return Video.query.filter(Video.score > 9).all()
-
+    return get_videos_of_status("best")
 
 def get_vetoed_webms():
     return os.listdir('webms/veto')
 
 
 def get_bad_webms():
-    return Video.query.filter(Video.score < 0).all()
-
+    return get_videos_of_status("bad")
 
 def get_safe_webms():
     return Video.query.filter(Video.nsfw == False).all()
@@ -266,7 +264,7 @@ def get_trash_webms():
 
 
 def get_held_webms():
-    return get_videos_of_type("held")
+    return get_videos_of_status("held")
 
 
 def get_unheld_good_webms():
@@ -486,84 +484,81 @@ def moderate_webm(domain=None):
     verdict = request.form['verdict']
 
     status = None
-    try:
-        if verdict == 'good':
-            webm.score += 1
-            #status = mark_good(webm)
-        elif verdict == 'demote':
-            #status = mark_bad(webm)
-            webm.score -= 1
+
+    #TODO(samstudio8) Check against valid verdicts
+    if verdict == 'feature':
+        if is_unpromotable(webm):
+            abort(400, 'not allowed to feature')
+        if webm.get_last_important_action_type is not "good":
+            abort(400, 'can only feature good webms')
+    if verdict == 'shunt':
+        if webm.get_last_important_action_type is not "good":
+            abort(400, 'can only shunt good webms')
+        verdict = "music"
+    """
+    elif verdict == 'unshunt':
+        if webm in get_music_webms():
+            status = unmark_music(webm)
         else:
-            abort(400, 'invalid verdict')
-        """
-        elif verdict == 'shunt':
-            if webm in get_good_webms():
-                status = mark_music(webm)
-            else:
-                abort(400, 'can only shunt good webms')
-        elif verdict == 'unshunt':
-            if webm in get_music_webms():
-                status = unmark_music(webm)
-            else:
-                abort(400, 'can only unshunt if shunted!')
-        elif verdict == 'report':
-            status = mark_ugly(webm)
-        elif verdict == 'demote':
-            if webm in get_good_webms():
-                unmark_good(webm)
-                flash('Demoted ' + webm)
+            abort(400, 'can only unshunt if shunted!')
+    elif verdict == 'report':
+        status = mark_ugly(webm)
+    elif verdict == 'demote':
+        if webm in get_good_webms():
+            unmark_good(webm)
+            flash('Demoted ' + webm)
+            return redirect('/', 303)
+        else:
+            abort(400, 'can only demote good webms')
+    elif verdict == 'feature':
+        if is_unpromotable(webm):
+            abort(400, 'not allowed to feature')
+        if webm in get_good_webms():
+            mark_best(webm)
+            flash('Promoted ' + webm)
+            return redirect('/', 303)
+        else:
+            abort(400, 'can only feature good webms')
+    elif verdict == 'forgive':
+        if webm in get_bad_webms():
+            unmark_bad(webm)
+            flash('Forgave ' + webm)
+            return redirect('/', 303)
+        else:
+            abort(400, 'can only forgive bad webms')
+    elif verdict == 'keep' or verdict == 'hold':
+        if webm in get_unheld_good_webms():
+            mark_hold(webm)
+        return redirect('/')
+    elif verdict == 'veto' or verdict == 'nsfw':
+        if webm in get_good_webms():
+            if webm not in get_best_webms():
+                mark_veto(webm)
                 return redirect('/', 303)
             else:
-                abort(400, 'can only demote good webms')
-        elif verdict == 'feature':
-            if is_unpromotable(webm):
-                abort(400, 'not allowed to feature')
-            if webm in get_good_webms():
-                mark_best(webm)
-                flash('Promoted ' + webm)
-                return redirect('/', 303)
-            else:
-                abort(400, 'can only feature good webms')
-        elif verdict == 'forgive':
-            if webm in get_bad_webms():
-                unmark_bad(webm)
-                flash('Forgave ' + webm)
-                return redirect('/', 303)
-            else:
-                abort(400, 'can only forgive bad webms')
-        elif verdict == 'keep' or verdict == 'hold':
-            if webm in get_unheld_good_webms():
-                mark_hold(webm)
-            return redirect('/')
-        elif verdict == 'veto' or verdict == 'nsfw':
-            if webm in get_good_webms():
-                if webm not in get_best_webms():
-                    mark_veto(webm)
-                    return redirect('/', 303)
-                else:
-                    abort(400, 'cannot veto things already in best')
-            else:
-                abort(400, 'can only veto good webms')
-        elif verdict == 'unsure':
-            # placebo
-            add_log(webm, 'skipped')
-            return redirect('/')
-        elif verdict == 'affirm' or verdict == 'censure':
-            if not is_votable(webm):
-                if webm in get_best_webms():
-                    add_log(webm, verdict)
-            else:
-                abort(400, is_votable(webm))
-        """
+                abort(400, 'cannot veto things already in best')
+        else:
+            abort(400, 'can only veto good webms')
+    elif verdict == 'unsure':
+        # placebo
+        add_log(webm, 'skipped')
+        return redirect('/')
+    elif verdict == 'affirm' or verdict == 'censure':
+        if not is_votable(webm):
+            if webm in get_best_webms():
+                add_log(webm, verdict)
+        else:
+            abort(400, is_votable(webm))
+    else:
+        abort(400, 'invalid verdict')
+    """
 
-        flash('Marked ' + webm.name + ' as ' + verdict)
+    flash('Marked ' + webm.name + ' as ' + verdict)
 
-        address = Address.query.filter(Address.address == get_ip())[0]
-        db.session.add(Action(address, webm, verdict))
-        db.session.commit()
-        return redirect('/', '303')
-    except OSError:  # file exists
-        flash('Unable to mark ' + webm + ' as ' + verdict)
+    address = Address.query.filter(Address.address == get_ip())[0]
+    db.session.add(Action(address, webm, verdict))
+    db.session.commit()
+    return redirect('/', '303')
     return redirect('/')
 
 
