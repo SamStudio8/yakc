@@ -96,7 +96,7 @@ class Address(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True)
-    addresses = db.relationship('Address', backref='user', lazy='dynamic')
+    addresses = db.relationship('Address', backref='user', lazy='select')
 
     def __init__(self, username):
         self.username = username
@@ -112,8 +112,8 @@ class Action(db.Model):
     timestamp = db.Column(db.DateTime)
     important = db.Column(db.Boolean)
 
-    address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
-    video = db.relationship('Video', backref=db.backref('actions', lazy='dynamic'))
+    address = db.relationship('Address', backref=db.backref('actions', lazy='select'))
+    video = db.relationship('Video', backref=db.backref('actions', lazy='select'))
 
     def __init__(self, address, video, action, important=False):
         self.address_id = address.id
