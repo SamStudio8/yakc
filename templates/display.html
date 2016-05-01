@@ -11,14 +11,14 @@
               |  |   |               +--+ "nsfw"    |        |-> "censure" -+
  +------------+  |   | "good"        |  v           | "best" |              v
  |               |   +---------> good.webm.website -------> best.webm.website
- |               |   |             |     ^          |
- |    20% chance |   | "bad"       |     | after    |
- |    of placebo |   |             |     | good     |  "keep" / "hold"
- |               +---+             |     | empties  v
- |                   |             |     +---- decent.webm.website
- |                   | 80% chance  |shunt
- |                   v             +-----> music.webm.website
- | "forgive"
+ |               |   |             ^ |   ^          |
+ |    20% chance |   | "bad"       | |   | after    |
+ |    of placebo |   |             | |   | good     |  "keep" / "hold"
+ |               +---+       shunt | |   | empties  v
+ |                   |             | |   +---- decent.webm.website
+ |                   | 80% chance  | |unshunt
+ |                   v             | +------ music.webm.website
+ | "forgive"                       +----------^
  +----------- bad.webm.website           vetoed (nsfw) items cannot be featured
                      |                           any further than "good"
 webm withheld  <-----+  "report"
@@ -160,7 +160,7 @@ indefinitely                       censured videos go on your personal blacklist
 			}
 			*/
 
-			.debug {
+			.debug, .github, .history {
 				background-color: #777;
 				border-radius: 0.5em;
 				color: #777; /* TODO */
@@ -175,10 +175,21 @@ indefinitely                       censured videos go on your personal blacklist
 				width: 1em;
 				z-index: 20;
 			}
-			.debug:hover {
-								color: #333;
+			.github {
+				background-color: #999;
+				top: 3.5em;
+				z-index: 15;
+			}
+			.debug {
+				background-color: #bbb;
+				color: #bbb;
+				top: 5em;
+				z-index: 10;
+			}
+			.debug:hover, .history:hover {
+				color: #333;
 				height: auto;
-					width: auto;
+				width: auto;
 			}
 
 			.news {
@@ -191,7 +202,7 @@ indefinitely                       censured videos go on your personal blacklist
 				right: 2em;
 				text-align: left;
 				bottom: 2em;
-				z-index: 20;
+				z-index: 10;
 			}
 
 			input {
@@ -203,7 +214,7 @@ indefinitely                       censured videos go on your personal blacklist
 		<!-- <div class="news"></div> -->
 
 		<a href="/{{webm}}">
-		<video autoplay controls loop>
+		<video id="js-video" autoplay controls loop>
 			<source src="/{{ webm }}">
 		</video>
 		</a>
@@ -223,17 +234,23 @@ indefinitely                       censured videos go on your personal blacklist
 					<!-- <input type="submit" title="I'm not sure where this video should be (skip)" name="verdict" value="unsure"> -->
 					<input class="bad right" type="submit" title="I don't like this video (chaff)" name="verdict" value="bad">
 					{% endif %}
+				{% elif queue == 'music' %}
+					<input class="good" type="submit" title="Move back to 'good' (unshunt)" name="verdict" value="unshunt">
 				{% elif queue == 'good' %}
 					<div>
 					{% if unpromotable %}
 						<input class="best left" type="submit" title="[cannot feature: {{ unpromotable }}]" name="verdict" value="feature" disabled>
 						<input class="good" type="submit" title="[cannot veto: {{ unpromotable }}]" name="verdict" value="nsfw" disabled>
-						<input class="music" type="submit" title="[cannot shunt: {{ unpromotable }}]" name="verdict" value="shunt" disabled>
+						{% if unpromotable == 'this video has been vetoed' or unpromotable == 'cannot feature own videos' %}
+							<input class="music" id="js-shunt" type="submit" title="Mark as good music (shunt)" name="verdict" value="shunt">
+						{% else %}
+							<input class="music" id="js-shunt" type="submit" title="[cannot shunt: {{ unpromotable }}]" name="verdict" value="shunt" disabled>
+						{% endif %}
 						<input class="ugly right" type="submit" title="[cannot veto: {{ unpromotable }}]" name="verdict" value="veto" disabled>
 					{% else %}
 						<input class="best left" type="submit" title="This is the best video ever (and I promise it's work-safe)" name="verdict" value="feature">
 						<input class="good" type="submit" title="Prevent this video from entering 'best' (veto)" name="verdict" value="nsfw">
-						<input class="music" type="submit" title="Mark as good music (shunt)" name="verdict" value="shunt">
+						<input class="music" type="submit" id="js-shunt" title="Mark as good music (shunt!)" name="verdict" value="shunt">
 						<input class="good right" type="submit" title="Prevent this video from entering 'best' (veto)" name="verdict" value="veto">
 					{% endif %}
 					</div>
@@ -267,7 +284,6 @@ indefinitely                       censured videos go on your personal blacklist
 			{% if count %}
 				<li>
 					{{ count }} {{ queue }} videos
-					{% if delta %} &Delta;{{delta}} {% endif %}
 				</li>
 			{% endif %}
 			{% with messages = get_flashed_messages() %}
@@ -294,6 +310,10 @@ indefinitely                       censured videos go on your personal blacklist
 			</ul>
 		</form>
 		{% endif %}
+{% if history %}
+<pre class="history">{{history}}</pre>
+{% endif %}
+<a class="github" title="View source" href="https://github.com/zuzak/yakc"></a>
 {% if debug %}
 <pre class="debug">{{debug}}</pre>
 {% endif %}
@@ -308,5 +328,20 @@ indefinitely                       censured videos go on your personal blacklist
     ga('send', 'pageview');
 
 		</script>
+		{% if queue == 'good' %}
+		<script>
+			document.getElementById( "js-video" ).addEventListener( "loadeddata", function () {
+				if ( typeof ( this.mozHasAudio !== "undefined" ) && this.mozHasAudio === false) {
+					document.getElementById("js-shunt").disabled = true;
+					document.getElementById("js-shunt").title = "[cannot shunt: no audio]"
+				} else if ( typeof ( this.webkitAudioDecodedByteCount !== "undefined" ) && this.webkitAudioDecodedByteCount === 0 ) {
+					document.getElementById("js-shunt").disabled = true;
+					document.getElementById("js-shunt").title = "[cannot shunt: no audio]"
+				} else {
+					// document.getElementById("js-shunt").disabled = false;
+				}
+			} );
+		</script>
+		{% endif %}
 	</body>
 </html>
