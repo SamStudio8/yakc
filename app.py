@@ -62,14 +62,17 @@ class User(db.Model):
 
 class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
-    action = db.Column(db.Enum("promote", "demote", name="action_type_enum"))
+    action = db.Column(db.Enum("good", "bad", name="action_type_enum"))
     timestamp = db.Column(db.DateTime)
 
-    def __init__(self, user, video, action):
-        self.user = user
-        self.video = video
+    address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
+    video = db.relationship('Video', backref=db.backref('actions', lazy='dynamic'))
+
+    def __init__(self, address, video, action):
+        self.address_id = address.id
+        self.video_id = video.id
         self.action = action
         self.timestamp = datetime.utcnow()
 
@@ -121,47 +124,38 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
-    if webm in get_best_webms():
-        return 'already featured'
-    if webm in get_vetoed_webms():
-        return 'this video has been vetoed'
-    user = get_ip()
-    user = map_ips(user, user)
+    actions = get_address_video_actions(get_ip(), webm.id)
 
-    if user == '(central)':
-        return 'this shared IP address is banned'
-    if user.startswith('94.119'):
-        return 'this shared IP address is banned'
-    log = get_log(webm)
-    if log is not None:
-        log = log.split('\n')
-        for line in log:
-            if user in line:
-                if 'marked good' in line:
-                    return 'cannot feature own videos'
-                if 'demoted' in line:
-                    return 'you demoted this before!'
+    #if webm in get_best_webms():
+    #    return 'already featured'
+    #if webm in get_vetoed_webms():
+    #    return 'this video has been vetoed'
+
+    #if user == '(central)':
+    #    return 'this shared IP address is banned'
+    #if user.startswith('94.119'):
+    #    return 'this shared IP address is banned'
+    print actions
+    if "good" in actions:
+        return 'cannot feature own videos'
+    if "bad" in actions:
+        return 'you demoted this before!'
     return False
 
 
 def is_votable(webm):
-    user = get_ip()
-    user = map_ips(user, user)
-    log = get_log(webm)
-    if log is not None:
-        log = log.split('\n')
-        for line in log:
-            if user in line:
-                if 'marked good' in line:
-                    return 'cannot feature own videos'
-                if 'demoted' in line:
-                    return 'you demoted this before!'
-                if 'censure' in line:
-                    return 'you already censured'
-                if 'affirm' in line:
-                    return 'you already affirmed'
-                if 'featured' in line:
-                    return 'you featured this!'
+    actions = get_address_video_actions(get_ip(), webm.id)
+    if "good" in actions:
+        return 'cannot feature own videos'
+    if "bad" in actions:
+        return 'you demoted this before!'
+
+    #if 'censure' in line:
+    #    return 'you already censured'
+    #if 'affirm' in line:
+    #    return 'you already affirmed'
+    #if 'featured' in line:
+    #    return 'you featured this!'
     return False
 
 
@@ -188,14 +182,31 @@ def generate_webm_token(webm, salt=None):
 def get_all_webms():
     return Video.query.all()
 
+#TODO(samstudio8) 404 on failure
 def get_video(name):
     try:
         return Video.query.filter(Video.name == name)[0]
     except IndexError:
         return None
 
+#TODO(samstudio8) Create new user on failure
+def get_address(address):
+    try:
+        return Address.query.filter(Address.address == address)[0]
+    except IndexError:
+        return None
+
+def get_address_video_actions(raw_ip, webm_id):
+    address = get_address(raw_ip)
+    if address.user:
+        actions = [x[0] for x in Action.query.filter(Action.address_id.in_( address.user.addresses.with_entities(Address.id) ), Action.video_id == webm_id).with_entities(Action.action).all()]
+    else:
+        actions = [x[0] for x in Action.query.filter(Action.address_id == address.address, Action.video_id == webm_id).with_entities(Action.action).all()]
+    return actions
+
+
 def get_good_webms():
-    return Video.query.filter(Video.score > 0).all()
+    return Video.query.filter(Video.score > 1).all()
 
 def get_music_webms():
     return os.listdir('webms/music')
@@ -222,7 +233,7 @@ def get_quality_webms():
 
 
 def get_pending_webms():
-    return Video.query.filter(Video.score == 0).all()
+    return Video.query.filter(Video.score >= 0).all()
 
 def get_trash_webms():
     return os.listdir('webms/trash')
@@ -451,7 +462,8 @@ def mark_best(webm):
 @app.route('/moderate', methods=['POST'])
 @app.route('/moderate', methods=['POST'], subdomain='<domain>')
 def moderate_webm(domain=None):
-    webm = request.form['webm']
+    name = request.form['webm']
+    webm = get_video(name.replace(".webm", ""))
     token = request.form['token'].split(':')
     if not (token[0] + ':' + token[1] == generate_webm_token(webm, token[1])):
         abort(400, 'token mismatch')
@@ -461,9 +473,14 @@ def moderate_webm(domain=None):
     status = None
     try:
         if verdict == 'good':
-            status = mark_good(webm)
+            webm.score += 1
+            #status = mark_good(webm)
         elif verdict == 'bad':
-            status = mark_bad(webm)
+            #status = mark_bad(webm)
+            webm.score -= 1
+        else:
+            abort(400, 'invalid verdict')
+        """
         elif verdict == 'shunt':
             status = mark_music(webm)
         elif verdict == 'report':
@@ -514,10 +531,13 @@ def moderate_webm(domain=None):
                     add_log(webm, verdict)
             else:
                 abort(400, is_votable(webm))
-        else:
-            abort(400, 'invalid verdict')
+        """
 
-        flash('Marked ' + webm + ' as ' + verdict)
+        flash('Marked ' + webm.name + ' as ' + verdict)
+
+        address = Address.query.filter(Address.address == get_ip())[0]
+        db.session.add(Action(address, webm, verdict))
+        db.session.commit()
         return redirect('/', '303')
     except OSError:  # file exists
         flash('Unable to mark ' + webm + ' as ' + verdict)
