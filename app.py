@@ -362,7 +362,7 @@ def serve_random():
     except IndexError:
         pass
     logger.debug("%s\tRENDERING" % datetime.now().strftime("%H:%M:%S.%f"))
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=pending.count(), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
 @app.route('/', subdomain='good')
