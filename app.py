@@ -174,8 +174,9 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
-    print "IS UNPROMOT"
+    logger.debug("CHECK UNPROMOT :A")
     actions = get_address_video_actions(get_ip(), webm.id)
+    logger.debug("CHECK UNPROMOT :B")
 
     #if webm in get_best_webms():
     #    return 'already featured'
@@ -225,6 +226,7 @@ def get_name(webm):
 
 
 def generate_webm_token(webm, salt=None):
+    logger.debug("MAKE TOKEN")
     if not salt:
         salt = uuid4().hex
     return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
@@ -362,14 +364,14 @@ def show_webm(name, domain=None):
 @app.route('/')
 def serve_random():
     try:
-        print "GET"
+        logger.debug("GET PENDING")
         pending = get_pending_webms()
-        print "RAND"
+        logger.debug("RANDOMIZE")
         webm = pending[randint(0, len(pending)-1)]
-        print "DONE"
+        logger.debug("SELECTED WEBM")
     except IndexError:
         pass
-    print "RENDER"
+    logger.debug("RENDERING")
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
