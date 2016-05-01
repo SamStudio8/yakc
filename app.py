@@ -361,10 +361,14 @@ def show_webm(name, domain=None):
 @app.route('/')
 def serve_random():
     try:
+        print "GET"
         pending = get_pending_webms()
+        print "RAND"
         webm = pending[randint(0, len(pending))]
+        print "DONE"
     except IndexError:
         pass
+    print "RENDER"
     return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=webm.make_history(), stats=get_stats(), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
