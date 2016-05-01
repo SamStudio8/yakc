@@ -39,14 +39,14 @@ if SETTINGS.PERF_LOG:
     def before_cursor_execute(conn, cursor, statement,
             parameters, context, executemany):
         conn.info.setdefault('query_start_time', []).append(time.time())
-        logger.debug("Start Query: %s", statement)
+        logger.debug("%s\tStart Query: %s" % (datetime.now().strftime("%H:%M:%S.%f"), statement))
 
     @event.listens_for(Engine, "after_cursor_execute")
     def after_cursor_execute(conn, cursor, statement,
             parameters, context, executemany):
         total = time.time() - conn.info['query_start_time'].pop(-1)
-        logger.debug("Query Complete!")
-        logger.debug("Total Time: %f", total)
+        logger.debug("%s\tQuery Complete!" % datetime.now().strftime("%H:%M:%S.%f"))
+        logger.debug("%s\tTotal Time: %f" % (datetime.now().strftime("%H:%M:%S.%f"), total))
 
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -175,9 +175,9 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
-    logger.debug("CHECK UNPROMOT :A")
+    logger.debug("%s\tCHECK UNPROMOT :A" % datetime.now().strftime("%H:%M:%S.%f"))
     actions = get_address_video_actions(get_ip(), webm.id)
-    logger.debug("CHECK UNPROMOT :B")
+    logger.debug("%s\tCHECK UNPROMOT :B" % datetime.now().strftime("%H:%M:%S.%f"))
 
     #if webm in get_best_webms():
     #    return 'already featured'
@@ -213,7 +213,7 @@ def is_votable(webm):
 
 
 def generate_webm_token(webm, salt=None):
-    logger.debug("MAKE TOKEN")
+    logger.debug("%s\tMAKE TOKEN" % datetime.now().strftime("%H:%M:%S.%f"))
     if not salt:
         salt = uuid4().hex
     return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
@@ -351,14 +351,14 @@ def show_webm(name, domain=None):
 @app.route('/')
 def serve_random():
     try:
-        logger.debug("GET PENDING")
+        logger.debug("%s\tGET PENDING" % datetime.now().strftime("%H:%M:%S.%f"))
         pending = get_pending_webms()
-        logger.debug("RANDOMIZE")
+        logger.debug("%s\tRANDOMIZE" % datetime.now().strftime("%H:%M:%S.%f"))
         webm = pending[randint(0, len(pending)-1)]
-        logger.debug("SELECTED WEBM")
+        logger.debug("%s\tSELECTED WEBM" % datetime.now().strftime("%H:%M:%S.%f"))
     except IndexError:
         pass
-    logger.debug("RENDERING")
+    logger.debug("%s\tRENDERING" % datetime.now().strftime("%H:%M:%S.%f"))
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
