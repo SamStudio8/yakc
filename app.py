@@ -334,11 +334,10 @@ def show_webm(name, domain=None):
 
 @app.route('/')
 def serve_random():
-    try:
-        pending = get_pending_webms()
-        webm = pending[randint(0, len(pending)-1)]
-    except IndexError:
+    pending = get_pending_webms()
+    if len(pending) == 0:
         abort(404, "No pending videos!")
+    webm = pending[randint(0, len(pending)-1)]
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
