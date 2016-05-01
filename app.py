@@ -370,7 +370,7 @@ def serve_random():
     except IndexError:
         pass
     print "RENDER"
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), stats=get_stats(), unpromotable=is_unpromotable(webm))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
 @app.route('/', subdomain='good')
@@ -390,7 +390,7 @@ def serve_good():
             best = True
     except IndexError:
         abort(404, 'You need to promote some webms!')
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), debug=u'\u0394'+str(delta))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
 
 @app.route('/', subdomain='decent')
 def serve_all_good():
