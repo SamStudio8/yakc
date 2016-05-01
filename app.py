@@ -17,6 +17,13 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = SETTINGS.DATABASE_URI
 db = SQLAlchemy(app)
 
+try:
+    from raven.contrib.flask import Sentry
+except ImportError:
+    pass
+else:
+    sentry = Sentry(app)
+
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     path = db.Column(db.String(255))
@@ -101,13 +108,6 @@ class Action(db.Model):
         else:
             un = self.address.address
         return "%s - %s by %s" % (stamp, self.action, un)
-
-try:
-    from raven.contrib.flask import Sentry
-except ImportError:
-    pass
-else:
-    sentry = Sentry(app)
 
 delta = 0
 
