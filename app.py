@@ -96,7 +96,7 @@ class Address(db.Model):
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True)
-    addresses = db.relationship('Address', backref='user', lazy='select')
+    addresses = db.relationship('Address', backref='user', lazy='dynamic')
 
     def __init__(self, username):
         self.username = username
@@ -159,7 +159,8 @@ def add_log(webm, action):
 
 
 def get_user_censured(webm):
-    log = get_log(webm)
+    #log = get_log(webm)
+    log = None
     if log is not None:
         user = get_ip()
         user = map_ips(user, user)
@@ -209,20 +210,6 @@ def is_votable(webm):
     #if 'featured' in line:
     #    return 'you featured this!'
     return False
-
-
-def get_log(webm):
-    #try:
-    #    fp = open('webms/metadata/' + webm, 'r')
-    #    string = fp.read()
-    #    fp.close()
-    #    return string
-    #except IOError:
-    return None
-
-
-def get_name(webm):
-    return os.path.splittext(webm)[0]
 
 
 def generate_webm_token(webm, salt=None):
