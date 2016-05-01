@@ -65,6 +65,7 @@ class Video(db.Model):
         return '<Video %r (%d)>' % (self.name, self.score)
 
     def make_history(self):
+        print "HISTORY"
         return "\n".join([str(x) for x in self.actions.all()])
 
     def get_last_important_action_type(self):
@@ -174,6 +175,7 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
+    print "IS UNPROMOT"
     actions = get_address_video_actions(get_ip(), webm.id)
 
     #if webm in get_best_webms():
