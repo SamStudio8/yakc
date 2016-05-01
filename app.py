@@ -173,6 +173,7 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
+    return False
     actions = get_address_video_actions(get_ip(), webm.id)
 
     #if webm in get_best_webms():
@@ -495,10 +496,10 @@ def moderate_webm(domain=None):
     if verdict == 'feature':
         if is_unpromotable(webm):
             abort(400, 'not allowed to feature')
-        if webm.get_last_important_action_type is not "good":
+        if webm.get_last_important_action_type() is not "good":
             abort(400, 'can only feature good webms')
     if verdict == 'shunt':
-        if webm.get_last_important_action_type is not "good":
+        if webm.get_last_important_action_type() is not "good":
             abort(400, 'can only shunt good webms')
         verdict = "music"
     """
