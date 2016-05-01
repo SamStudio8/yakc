@@ -108,7 +108,7 @@ class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
-    action = db.Column(db.Enum("view", "good", "bad", "held", "demote", name="action_type_enum"))
+    action = db.Column(db.Enum("view", "good", "bad", "held", "feature", "demote", name="action_type_enum"))
     timestamp = db.Column(db.DateTime)
     important = db.Column(db.Boolean)
 
@@ -175,9 +175,7 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
-    logger.debug("%s\tCHECK UNPROMOT :A" % datetime.now().strftime("%H:%M:%S.%f"))
     actions = get_address_video_actions(get_ip(), webm.id)
-    logger.debug("%s\tCHECK UNPROMOT :B" % datetime.now().strftime("%H:%M:%S.%f"))
 
     #if webm in get_best_webms():
     #    return 'already featured'
@@ -213,7 +211,6 @@ def is_votable(webm):
 
 
 def generate_webm_token(webm, salt=None):
-    logger.debug("%s\tMAKE TOKEN" % datetime.now().strftime("%H:%M:%S.%f"))
     if not salt:
         salt = uuid4().hex
     return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
@@ -341,14 +338,10 @@ def show_webm(name, domain=None):
 @app.route('/')
 def serve_random():
     try:
-        logger.debug("%s\tGET PENDING" % datetime.now().strftime("%H:%M:%S.%f"))
         pending = get_pending_webms()
-        logger.debug("%s\tRANDOMIZE" % datetime.now().strftime("%H:%M:%S.%f"))
         webm = pending[randint(0, pending.count()-1)]
-        logger.debug("%s\tSELECTED WEBM" % datetime.now().strftime("%H:%M:%S.%f"))
     except IndexError:
         pass
-    logger.debug("%s\tRENDERING" % datetime.now().strftime("%H:%M:%S.%f"))
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=pending.count(), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
@@ -572,9 +565,10 @@ def moderate_webm(domain=None):
 
     flash('Marked ' + webm.name + ' as ' + verdict)
 
-    address = Address.query.filter(Address.address == get_ip())[0]
-    db.session.add(Action(address, webm, verdict))
-    db.session.commit()
+    if verdict not in ["unsure"]:
+        address = Address.query.filter(Address.address == get_ip())[0]
+        db.session.add(Action(address, webm, verdict))
+        db.session.commit()
     return redirect('/', '303')
     return redirect('/')
 

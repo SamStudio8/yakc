@@ -3,7 +3,7 @@ import os
 
 app.db.create_all()
 
-lh = app.User("localhost")
+lh = app.User("system")
 app.db.session.add(lh)
 
 for f in os.listdir('webms/all'):
