@@ -52,17 +52,15 @@ class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     path = db.Column(db.String(255))
     name = db.Column(db.String(255), unique=True)
-    score = db.Column(db.Integer)
     nsfw = db.Column(db.Boolean)
 
-    def __init__(self, path, name, score=0, nsfw=False):
+    def __init__(self, path, name, nsfw=False):
         self.path = path
         self.name = name
-        self.score = score
         self.nsfw = False
 
     def __repr__(self):
-        return '<Video %r (%d)>' % (self.name, self.score)
+        return '<Video %r>' % (self.name)
 
     def get_history(self):
         return self.actions.all()
@@ -108,7 +106,7 @@ class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
-    action = db.Column(db.Enum("view", "good", "bad", "held", "feature", "demote", name="action_type_enum"))
+    action = db.Column(db.Enum("upload", "view", "good", "bad", "held", "feature", "demote", name="action_type_enum"))
     timestamp = db.Column(db.DateTime)
     important = db.Column(db.Boolean)
 
@@ -121,7 +119,7 @@ class Action(db.Model):
         self.action = action
         self.timestamp = datetime.utcnow()
 
-        if action in ["good", "bad", "held", "demote", "feature"]:
+        if action in ["upload", "good", "bad", "held", "demote", "feature"]:
             important = True
         self.important = important
 
@@ -243,8 +241,6 @@ def get_address_video_actions(raw_ip, webm_id):
         actions = [x[0] for x in Action.query.filter(Action.address_id.in_( address.user.addresses.with_entities(Address.id) ), Action.video_id == webm_id).with_entities(Action.action).all()]
     else:
         actions = [x[0] for x in Action.query.filter(Action.address_id == address.address, Action.video_id == webm_id).with_entities(Action.action).all()]
-    print address.address
-    print actions
     return actions
 
 
@@ -272,9 +268,8 @@ def get_quality_webms():
     """Allows whitelisting of reports to stop the top-tier webms being 403'd"""
     return list(set(get_good_webms()).union(get_best_webms()))
 
-
 def get_pending_webms():
-    return Video.query.filter(Video.score >= 0)
+    return get_videos_of_status("upload")
 
 def get_trash_webms():
     return os.listdir('webms/trash')
@@ -341,10 +336,10 @@ def show_webm(name, domain=None):
 def serve_random():
     try:
         pending = get_pending_webms()
-        webm = pending[randint(0, pending.count()-1)]
+        webm = pending[randint(0, len(pending)-1)]
     except IndexError:
-        pass
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=pending.count(), unpromotable=is_unpromotable(webm))
+        abort(404, "No pending videos!")
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
 @app.route('/', subdomain='good')
