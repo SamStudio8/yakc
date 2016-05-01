@@ -64,9 +64,8 @@ class Video(db.Model):
     def __repr__(self):
         return '<Video %r (%d)>' % (self.name, self.score)
 
-    def make_history(self):
-        print "HISTORY"
-        return "\n".join([str(x) for x in self.actions.all()])
+    def get_history(self):
+        return self.actions.all()
 
     def get_last_important_action_type(self):
         try:
@@ -357,7 +356,7 @@ def show_webm(name, domain=None):
         queue = 'bad'
         token = generate_webm_token(name)
 
-    return render_template('display.html', webm=name, queue=queue, token=token, history=get_log(name))
+    return render_template('display.html', webm=name, queue=queue, token=token)
 
 
 @app.route('/')
@@ -366,12 +365,12 @@ def serve_random():
         print "GET"
         pending = get_pending_webms()
         print "RAND"
-        webm = pending[randint(0, len(pending))]
+        webm = pending[randint(0, len(pending)-1)]
         print "DONE"
     except IndexError:
         pass
     print "RENDER"
-    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=webm.make_history(), stats=get_stats(), unpromotable=is_unpromotable(webm))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), stats=get_stats(), unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
 @app.route('/', subdomain='good')
@@ -391,7 +390,7 @@ def serve_good():
             best = True
     except IndexError:
         abort(404, 'You need to promote some webms!')
-    return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), history=webm.make_history(), debug=u'\u0394'+str(delta))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), debug=u'\u0394'+str(delta))
 
 @app.route('/', subdomain='decent')
 def serve_all_good():
@@ -400,7 +399,7 @@ def serve_all_good():
         webm = choice(good)
     except IndexError:
         abort(404, 'There are no held webms.')
-    return render_template('display.html', webm=webm.path, queue='good', stats=get_stats(), history=get_log(webm))
+    return render_template('display.html', webm=webm, queue='good', stats=get_stats())
 
 
 @app.route('/', subdomain='best')
@@ -422,7 +421,7 @@ def serve_best_nocensor():
     except IndexError:
         abort(404, 'There are no featured webms.')
     token = generate_webm_token(webm)
-    return render_template('display.html', webm=webm, queue='best', token=token, history=get_log(webm), unpromotable=is_votable(webm))
+    return render_template('display.html', webm=webm, queue='best', token=token, unpromotable=is_votable(webm))
 
 @app.route('/', subdomain='music')
 def serve_music():
@@ -432,7 +431,7 @@ def serve_music():
     except IndexError:
         abort(404, 'You need to shunt some videos!')
     token = generate_webm_token(webm)
-    return render_template('display.html', webm=webm, queue='music', token=token, history=get_log(webm), count=len(webms))
+    return render_template('display.html', webm=webm, queue='music', token=token, count=len(webms))
 
 @app.route('/', subdomain='index')
 def serve_best_index():

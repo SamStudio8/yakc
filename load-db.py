@@ -7,12 +7,8 @@ lh = app.User("localhost")
 app.db.session.add(lh)
 
 for f in os.listdir('webms/all'):
-    for i in range(0,12000):
-        toot = ""
-        if i > 0:
-            toot = str(i)
-        video = app.Video(f, f.replace(".webm", "")+toot)
-        app.db.session.add(video)
+    video = app.Video(f, f.replace(".webm", ""))
+    app.db.session.add(video)
 app.db.session.commit()
 
 ip = app.Address("127.0.0.1", lh)

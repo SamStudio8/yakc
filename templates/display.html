@@ -213,16 +213,16 @@ indefinitely                       censured videos go on your personal blacklist
 	<body class="{{ queue }}">
 		<!-- <div class="news"></div> -->
 
-		<a href="/{{webm}}">
+		<a href="/{{webm.path}}">
 		<video id="js-video" autoplay controls loop>
-			<source src="/{{ webm }}">
+			<source src="/{{ webm.path }}">
 		</video>
 		</a>
 		{% if not domain %}
 			<form action="/moderate" method="POST">
 			{% if token %}
 				<input type="hidden" name="token" value="{{ token }}">
-				<input type="hidden" name="webm" value="{{ webm }}">
+				<input type="hidden" name="webm" value="{{ webm.path }}">
 
 				{% if not queue %}
 					{% if unpromotable %}
@@ -310,8 +310,12 @@ indefinitely                       censured videos go on your personal blacklist
 			</ul>
 		</form>
 		{% endif %}
-{% if history %}
-<pre class="history">{{history}}</pre>
+{% if webm.actions %}
+<pre class="history">
+        {% for entry in webm.actions %}
+            {{ entry }}
+        {% endfor %}
+</pre>
 {% endif %}
 <a class="github" title="View source" href="https://github.com/zuzak/yakc"></a>
 {% if debug %}
