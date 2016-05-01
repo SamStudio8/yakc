@@ -1,7 +1,7 @@
 from flask import (Flask, send_from_directory, abort,
                   render_template, request, flash, redirect)
 from flask_sqlalchemy import SQLAlchemy
-from random import choice, random
+from random import choice, random, randint
 from uuid import uuid4
 from datetime import datetime
 import json
@@ -362,7 +362,7 @@ def show_webm(name, domain=None):
 def serve_random():
     try:
         pending = get_pending_webms()
-        webm = choice(pending)
+        webm = pending[randint(0, len(pending))]
     except IndexError:
         pass
     return render_template('display.html', webm=webm.path, token=generate_webm_token(webm), count=len(pending), history=webm.make_history(), stats=get_stats(), unpromotable=is_unpromotable(webm))
