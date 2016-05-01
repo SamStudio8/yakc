@@ -276,8 +276,9 @@ def get_quality_webms():
 
 def get_pending_webms():
     logger.debug("%s\tGET PENDING WEBM():A" % datetime.now().strftime("%H:%M:%S.%f"))
-    return Video.query.filter(Video.score >= 0).all()
+    res = Video.query.filter(Video.score >= 0)
     logger.debug("%s\tGET PENDING WEBM():B" % datetime.now().strftime("%H:%M:%S.%f"))
+    return res.all()
 
 def get_trash_webms():
     return os.listdir('webms/trash')
