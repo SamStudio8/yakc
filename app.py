@@ -75,7 +75,7 @@ class Video(db.Model):
 
 def get_videos_of_status(action_type):
     #TODO(samstudio8) [a for a in gross].
-    return [a.video for a  in Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type).all()]
+    return [a.video for a in Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)]
 
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -275,21 +275,13 @@ def get_quality_webms():
 
 
 def get_pending_webms():
-    logger.debug("%s\tGET PENDING WEBM():A" % datetime.now().strftime("%H:%M:%S.%f"))
-    res = Video.query.filter(Video.score >= 0)
-    logger.debug("%s\tGET PENDING WEBM():B" % datetime.now().strftime("%H:%M:%S.%f"))
-    return res
+    return Video.query.filter(Video.score >= 0)
 
 def get_trash_webms():
     return os.listdir('webms/trash')
 
-
 def get_held_webms():
     return get_videos_of_status("held")
-
-
-def get_unheld_good_webms():
-    return list(set(get_good_webms()) - set(get_held_webms()))
 
 
 def get_stats():
@@ -298,15 +290,10 @@ def get_stats():
         'good': (len(get_good_webms()) - best),
         'bad': len(get_bad_webms()),
         'best': best,
-        'pending': len(get_pending_webms()),
+        'pending': get_pending_webms().count(),
         'trash': len(get_trash_webms()),
-        'total': len(get_all_webms())
+        'total': Video.query.count(),
     }
-
-
-def delete_holding_queue():
-    shutil.rmtree('webms/good2')
-    os.makedirs('webms/good2')
 
 
 @app.route('/<name>.webm', subdomain='<domain>')
@@ -368,29 +355,34 @@ def serve_random():
 @app.route('/', subdomain='good')
 def serve_good():
     global delta
-    best = None
-    held = 0
-    try:
-        good = get_unheld_good_webms()
-        if len(good) == 0:
-            delete_holding_queue()
-            good = get_unheld_good_webms()
-        else:
-            held = len(get_held_webms())
-        webm = choice(good)
-        if webm in get_best_webms():
-            best = True
-    except IndexError:
+
+    good = get_videos_of_status("good")
+    held = get_videos_of_status("held")
+    if len(good) == 0:
+        #TODO(samstudio8) Bump everything back to good in a less crap way?
+        for video in held:
+            address = get_address("127.0.0.1")
+            db.session.add(Action(get_address("127.0.0.1"), video, 'good'))
+        db.session.commit()
+        good = held
+
+    if len(good) == 0:
         abort(404, 'You need to promote some webms!')
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
+
+    webm = good[randint(0, len(good)-1)]
+
+    #if webm in get_best_webms():
+    #    best = True
+    best=False
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=len(held), unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
 
 @app.route('/', subdomain='decent')
 def serve_all_good():
-    try:
-        good = get_held_webms()
-        webm = choice(good)
-    except IndexError:
+    held = get_videos_of_status("held")
+    if len(held) == 0:
         abort(404, 'There are no held webms.')
+
+    webm = held[randint(0, len(held)-1)]
     return render_template('display.html', webm=webm, queue='good', stats=get_stats())
 
 
@@ -433,12 +425,12 @@ def serve_best_index():
 
 @app.route('/', subdomain='bad')
 def serve_bad():
-    try:
-        webms = get_bad_webms()
-        webm = choice(webms)
-    except IndexError:
-        abort(404, 'No webms have been marked bad.')
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='bad', count=len(webms), stats=get_stats())
+    bad = get_videos_of_status("bad")
+    if len(bad) == 0:
+        abort(404, 'There are no bad webms.')
+
+    webm = bad[randint(0, len(bad)-1)]
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='bad', count=len(bad), stats=get_stats())
 
 
 def mark_ugly(webm):
