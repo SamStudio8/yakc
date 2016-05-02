@@ -72,7 +72,7 @@ class Video(db.Model):
             return None
 
 def get_videos_of_status(action_type):
-    return Video.query.join(Action).filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == "upload")
+    return Video.query.join(Action).filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
 
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
