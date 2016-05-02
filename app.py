@@ -72,13 +72,6 @@ class Video(db.Model):
             return None
 
 def get_videos_of_status(action_type):
-    #TODO(samstudio8) [a for a in gross].
-    #logger.debug("%s\tGETV" % (datetime.now().strftime("%H:%M:%S.%f")))
-    #result = Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
-    #logger.debug("%s\tCOMP" % (datetime.now().strftime("%H:%M:%S.%f")))
-    #resl = [a.video for a in result]
-    #logger.debug("%s\tSEND" % (datetime.now().strftime("%H:%M:%S.%f")))
-    #return resl
     return Video.query.join(Action).filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == "upload")
 
 class Address(db.Model):
@@ -117,7 +110,7 @@ class Action(db.Model):
     important = db.Column(db.Boolean)
 
     address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
-    video = db.relationship('Video', backref=db.backref('actions', lazy='joined'), lazy="joined")
+    video = db.relationship('Video', backref=db.backref('actions', lazy='dynamic'), lazy="joined")
 
     def __init__(self, address, video, action, important=False):
         self.address_id = address.id
