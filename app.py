@@ -116,7 +116,7 @@ class Action(db.Model):
     important = db.Column(db.Boolean)
 
     address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
-    video = db.relationship('Video', backref=db.backref('actions', lazy='joined'))
+    video = db.relationship('Video', backref=db.backref('actions', lazy='joined'), lazy="joined")
 
     def __init__(self, address, video, action, important=False):
         self.address_id = address.id
