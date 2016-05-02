@@ -73,12 +73,13 @@ class Video(db.Model):
 
 def get_videos_of_status(action_type):
     #TODO(samstudio8) [a for a in gross].
-    logger.debug("%s\tGETV" % (datetime.now().strftime("%H:%M:%S.%f")))
-    result = Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
-    logger.debug("%s\tCOMP" % (datetime.now().strftime("%H:%M:%S.%f")))
-    resl = [a.video for a in result]
-    logger.debug("%s\tSEND" % (datetime.now().strftime("%H:%M:%S.%f")))
-    return resl
+    #logger.debug("%s\tGETV" % (datetime.now().strftime("%H:%M:%S.%f")))
+    #result = Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
+    #logger.debug("%s\tCOMP" % (datetime.now().strftime("%H:%M:%S.%f")))
+    #resl = [a.video for a in result]
+    #logger.debug("%s\tSEND" % (datetime.now().strftime("%H:%M:%S.%f")))
+    #return resl
+    return Video.query.join(Action).filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == "upload")
 
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -284,13 +285,13 @@ def get_held_webms():
 
 
 def get_stats():
-    best = len(get_best_webms())
+    best = get_best_webms().count()
     return {
-        'good': (len(get_good_webms()) - best),
-        'bad': len(get_bad_webms()),
+        'good': (get_good_webms().count() - best),
+        'bad': get_bad_webms().count(),
         'best': best,
-        'pending': len(get_pending_webms()),
-        'trash': len(get_trash_webms()),
+        'pending': get_pending_webms().count(),
+        'trash': get_trash_webms().count(),
         'total': Video.query.count(),
     }
 
@@ -340,10 +341,11 @@ def show_webm(name, domain=None):
 @app.route('/')
 def serve_random():
     pending = get_pending_webms()
-    if len(pending) == 0:
+    c = pending.count()
+    if c == 0:
         abort(404, "No pending videos!")
-    webm = pending[randint(0, len(pending)-1)]
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=len(pending), unpromotable=is_unpromotable(webm))
+    webm = pending[randint(0, c-1)]
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=c, unpromotable=is_unpromotable(webm))
 
 #TODO(samstudio8) Currently always 404s
 @app.route('/', subdomain='good')
@@ -351,8 +353,10 @@ def serve_good():
     global delta
 
     good = get_videos_of_status("good")
+    gc = good.count()
     held = get_videos_of_status("held")
-    if len(good) == 0:
+    hc = held.count()
+    if gc == 0:
         #TODO(samstudio8) Bump everything back to good in a less crap way?
         for video in held:
             address = get_address("127.0.0.1")
@@ -360,23 +364,24 @@ def serve_good():
         db.session.commit()
         good = held
 
-    if len(good) == 0:
+    if gc == 0:
         abort(404, 'You need to promote some webms!')
 
-    webm = good[randint(0, len(good)-1)]
+    webm = good[randint(0, gc-1)]
 
     #if webm in get_best_webms():
     #    best = True
     best=False
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=len(held), unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=gc, best=best, held=hc, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
 
 @app.route('/', subdomain='decent')
 def serve_all_good():
     held = get_videos_of_status("held")
-    if len(held) == 0:
+    c = held.count()
+    if c == 0:
         abort(404, 'There are no held webms.')
 
-    webm = held[randint(0, len(held)-1)]
+    webm = held[randint(0, c-1)]
     return render_template('display.html', webm=webm, queue='good', stats=get_stats())
 
 
