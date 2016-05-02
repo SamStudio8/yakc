@@ -73,11 +73,11 @@ class Video(db.Model):
 
 def get_videos_of_status(action_type):
     #TODO(samstudio8) [a for a in gross].
-    logging.debug("%s\tGETV" % (datetime.now().strftime("%H:%M:%S.%f")))
+    logger.debug("%s\tGETV" % (datetime.now().strftime("%H:%M:%S.%f")))
     result = Action.query.filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
-    logging.debug("%s\tCOMP" % (datetime.now().strftime("%H:%M:%S.%f")))
+    logger.debug("%s\tCOMP" % (datetime.now().strftime("%H:%M:%S.%f")))
     resl = [a.video for a in result]
-    logging.debug("%s\tSEND" % (datetime.now().strftime("%H:%M:%S.%f")))
+    logger.debug("%s\tSEND" % (datetime.now().strftime("%H:%M:%S.%f")))
     return resl
 
 class Address(db.Model):
