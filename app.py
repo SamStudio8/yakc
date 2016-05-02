@@ -381,10 +381,11 @@ def serve_all_good():
 @app.route('/', subdomain='best')
 def serve_best():
     best = get_videos_of_status("feature")
-    if len(best) == 0:
+    c = best.count()
+    if c == 0:
         abort(404, 'You need to feature some webms!')
 
-    webm = best[randint(0, len(best)-1)]
+    webm = best[randint(0, c-1)]
 
     #if get_user_censured(webm):
     #    return redirect('/', 302)
