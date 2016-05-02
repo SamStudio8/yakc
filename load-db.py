@@ -15,7 +15,7 @@ for f in os.listdir('webms/all'):
     app.db.session.add(video)
 app.db.session.commit()
 
-for v in app.Video.query
+for v in app.Video.query:
     app.db.session.add(app.Action(ip, v, "upload"))
 app.db.session.commit()
 
