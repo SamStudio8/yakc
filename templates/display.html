@@ -10,31 +10,30 @@
               ^  ^   |                              |        +-> "affirm" --+
               |  |   |               +--+ "nsfw"    |        |-> "censure" -+
  +------------+  |   | "good"        |  v           | "best" |              v
- |               |   +---------> good.webm.website -------> best.webm.website
+ |               |   +---------> decent.webm.website -------> best.webm.website
  |               |   |             ^ |   ^          |
  |    20% chance |   | "bad"       | |   | after    |
  |    of placebo |   |             | |   | good     |  "keep" / "hold"
  |               +---+       shunt | |   | empties  v
- |                   |             | |   +---- decent.webm.website
+ |                   |             | |   +---- good.webm.website
  |                   | 80% chance  | |unshunt
  |                   v             | +------ music.webm.website
  | "forgive"                       +----------^
  +----------- bad.webm.website           vetoed (nsfw) items cannot be featured
-                     |                           any further than "good"
+                     |                           any further than "decent" / "good"
 webm withheld  <-----+  "report"
 indefinitely                       censured videos go on your personal blacklist
 
 
 	RECENT CHANGELOG:
 
+	2016-05-01 - Swapped good and decent
+
 	2016-04-30 - Created decent.webm.website as a RO good.webm.website without hold filter
 
 	2016-04-29 - Tweak delta: good to best is now +5, and report is -5.
 
 	2016-04-27 - Moved history to top right corner of screen
-
-	2016-04-26 - best.webm.website censors censured webms
-		       - top.webm.website is now the old best.webm.website
 
 	PRIVACY POLICY:
 		- Your IP address might be logged
@@ -69,21 +68,21 @@ indefinitely                       censured videos go on your personal blacklist
 			**/
 		*{ font-size: 16px }
 			body {
+				align-items: center;
 				background-color: #222;
+				/* disable this for centred, but actual size videos
+                   enable for full-screen but not-vcentred videos:  */
+				display: flex;
+				font-family:monospace;
+				font-size: 16px;
 				height: 100%;
+				justify-content: center;
 				margin: auto;
 				overflow: hidden;
 				padding: 0;
 				position: absolute;
+				text-align: center;
 				width: 100%;
-				text-align:center;
-				font-family:monospace;
-				font-size:16px;
-				/* disable this for centred, but actual size videos
-                   enable for full-screen but not-vcentred videos:  */
-				display: flex;
-				align-items: center;
-				justify-content: center;
 			}
 			body, .ugly {
 				background-color: #a520da; /* triad with goldenrod */
@@ -105,61 +104,56 @@ indefinitely                       censured videos go on your personal blacklist
 				background-color: #1e90ff;
 				border-color: #1e90ff;
 			}
+			.held, .decent {
+				background-color: #55da20;
+				border-color: #55da20;
+			}
 			video {
 				max-height: 100%;
 				min-width: 100%;
 			}
 			ul {
 				list-style-type: none;
-				padding: 0;
 				margin: 2px;
+				padding: 0;
 			}
-
 			li {
-				display:block;padding:2px;font-size:70%;
-				border: 1px solid #333;
+				background-color: #777;
 				border-radius: 4px;
-				margin:2px auto;
-				padding: 3px;
-				list-style-type: none;
+				border: 1px solid #333;
 				color: #222;
-					background-color: #777;
+				display: block;
+				font-size: 70%;
+				list-style-type: none;
+				margin:2px auto;
+				padding: 2px;
+				padding: 3px;
 			}
 			form {
-				position: fixed;
 				left: 1em;
+				position: fixed;
 				top: 1em;
 			}
 			.best form {
+				bottom: 1em;
 				left: 1em;
 				top: auto;
-				bottom: 1em;
 			}
 			li.stats {
-				border: none;
-					background-color: transparent;
+				background-color: magenta;
+				min-width: 10em;
+				overflow-x:hidden;
+				overflow-y: hidden;
+				padding: 0;
+				text-align:left;
+				white-space: nowrap;
 			}
 			.stat {
+				display: inline-block;
 				margin:0;
 				padding:0;
-					height: 1em;
-				display: inline-block;
-					border-top: 1px solid #333;
-						border-bottom: 1px solid #333;
-				float: left;
+				text-decoration: none;
 			}
-			/*
-			.stat.bad {
-				border-top-left-radius: 4px;
-				border-bottom-left-radius: 4px;
-			}
-			.stat.ugly {
-				border-top-right-radius: 4px;
-				border-bottom-right-radius: 4px;
-
-			}
-			*/
-
 			.debug, .github, .history {
 				background-color: #777;
 				border-radius: 0.5em;
@@ -195,23 +189,30 @@ indefinitely                       censured videos go on your personal blacklist
 			.news {
 				background-color: #777;
 				border-radius: 0.5em;
+				bottom: 2em;
 				font-size: 0.7em;
 				overflow: hidden;
 				padding: 0.5em;
 				position: fixed;
 				right: 2em;
 				text-align: left;
-				bottom: 2em;
 				z-index: 10;
 			}
 
 			input {
 				margin: 5px;
 			}
+			input:disabled {
+				/* this probably looks terrible */
+				display: none;
+			}
+			.clear {
+				clear:both;
+			}
 		</style>
 	</head>
 	<body class="{{ queue }}">
-		<!-- <div class="news"></div> -->
+		<div class="news">good.webm.website and decent.webm.website just switched places</div>
 
 		<a href="/{{webm.path}}">
 		<video id="js-video" autoplay controls loop>
@@ -246,20 +247,20 @@ indefinitely                       censured videos go on your personal blacklist
 						{% else %}
 							<input class="music" id="js-shunt" type="submit" title="[cannot shunt: {{ unpromotable }}]" name="verdict" value="shunt" disabled>
 						{% endif %}
-						<input class="ugly right" type="submit" title="[cannot veto: {{ unpromotable }}]" name="verdict" value="veto" disabled>
+						<!-- <input class="good right" type="submit" title="[cannot veto: {{ unpromotable }}]" name="verdict" value="veto" disabled> -->
 					{% else %}
 						<input class="best left" type="submit" title="This is the best video ever (and I promise it's work-safe)" name="verdict" value="feature">
 						<input class="good" type="submit" title="Prevent this video from entering 'best' (veto)" name="verdict" value="nsfw">
 						<input class="music" type="submit" id="js-shunt" title="Mark as good music (shunt!)" name="verdict" value="shunt">
-						<input class="good right" type="submit" title="Prevent this video from entering 'best' (veto)" name="verdict" value="veto">
+						<!-- <input class="good right" type="submit" title="Prevent this video from entering 'best' (veto)" name="verdict" value="veto"> -->
 					{% endif %}
 					</div>
 						{% if unpromotable == 'cannot feature own videos' %}
-						<input class="good" type="submit" title="[cannot hold: {{ unpromotable }}]" name="verdict" value="hold" disabled>
+						<input class="held" type="submit" title="[cannot hold: {{ unpromotable }}]" name="verdict" value="hold" disabled>
 						{% elif unpromotable == 'you demoted this before!'  %}
-							<input class="good" type="submit" title="[cannot hold: you tried to demote this video]" name="verdict" value="hold" disabled>
+							<input class="held" type="submit" title="[cannot hold: you tried to demote this video]" name="verdict" value="hold" disabled>
 						{% else %}
-							<input class="good" type="submit" title="This is the right place for this video (enact hold)" name="verdict" value="hold">
+							<input class="held" type="submit" title="This is the right place for this video (enact hold)" name="verdict" value="hold">
 						{% endif %}
 						<input class="good" type="submit" title="I'm not sure where this video should be (skip)" name="verdict" value="unsure">
 					{% if unpromotable == 'you demoted this before!' or unpromotable == 'already featured' %}
@@ -272,8 +273,10 @@ indefinitely                       censured videos go on your personal blacklist
 					<input class="bad" type="submit" onsubmit="return confirm('Are you sure you want to report and delete this video?');" title="Nobody should ever see this video ever again (blight)" name="verdict" value="report">
 				{% elif queue == 'best' %}
 					{% if unpromotable %}
+					<!--
 					<input class="best" type="submit" title="[cannot affirm: {{unpromotable}}]" name="verdict" value="affirm" disabled>
 					<input class="best" type="submit" title="[cannot censure: {{unpromotable}}]" name="verdict" value="censure" disabled>
+					-->
 					{% else %}
 					<input class="best" type="submit" title="This is a good video (upvote)" name="verdict" value="affirm">
 					<input class="best" type="submit" title="This video doesn't deserve to be here (downvote)" name="verdict" value="censure">
@@ -297,14 +300,22 @@ indefinitely                       censured videos go on your personal blacklist
 				<li> {{held}} held videos </li>
 			{% endif %}
 			{% if stats %}
-				<li class="stats ugly">
-					<a title="{{ stats.bad }} bad videos" style="width:{{ 100*(stats.bad / stats.total)}}%" class="stat bad" href="//bad.webm.website">&nbsp;</a>
-					<a title="{{ stats.good }} good videos" style="width:{{ 100*(stats.good / stats.total)}}%" class="stat good" href="//good.webm.website">&nbsp;</a>
-					<a title="{{ stats.best }} best videos" style="width:{{ 100*(stats.best / stats.total)}}%" class="stat best" href="//best.webm.website">&nbsp;</a>
-					<a title="{{ stats.trash }} reported videos" style="width:{{ 100*(stats.trash / stats.total)}}%" class="stat bad">&nbsp;</a>
-					<a title="{{ stats.pending }} pending videos" style="width:{{ 100*(stats.pending / stats.total)-1}}%" class="stat ugly" href="//webm.website">&nbsp;</a>
+				<li class="stats">
+					<!-- need the comments here because otherwise the newlines actually get displayed -->
+					<a title="{{ stats.bad }} bad videos" style="width:{{ 100*(stats.bad / stats.total)}}%" class="stat bad" href="//bad.webm.website">&nbsp;</a><!--
+					{% if held %}
+					--><a title="{{ count }} decent videos" style="width:{{ 100*(count) / stats.total}}%" class="stat good" href="//decent.webm.website">&nbsp;</a><!--
+					--><a title="{{ held }} good videos" style="width:{{ 100*(held / stats.total)}}%" class="stat held" href="//good.webm.website">&nbsp;</a><!--
+					{% else %}
+					--><a title="{{ stats.good }} good videos" style="width:{{ 100*(stats.good) / stats.total}}%" class="stat good" href="//decent.webm.website">&nbsp;</a><!--
+					--><a title="{{ stats.good }} good videos" style="width:{{ 100*(stats.held) / stats.total}}%" class="stat held" href="//good.webm.website">&nbsp;</a><!--
+					{% endif %}
+					--><a title="{{ stats.best }} best videos" style="width:{{ 100*(stats.best / stats.total)}}%" class="stat best" href="//best.webm.website">&nbsp;</a><!--
+					--><a title="{{ stats.music }} best videos" style="width:{{ 100*(stats.music / stats.total)}}%" class="stat music" href="//music.webm.website">&nbsp;</a><!--
+					--><a title="{{ stats.trash }} reported videos" style="width:{{ 100*(stats.trash / stats.total)}}%" class="stat bad">&nbsp;</a><!--
+					--><a title="{{ stats.pending }} pending videos" style="width:{{ 100*(stats.pending / stats.total)-2}}%" class="stat ugly" href="//webm.website">&nbsp;</a>
 					<!-- {{ stats.good }} -->
-					<span style="clear:both"></span>
+					<div class="clear" />
 				</li>
 				{% endif %}
 			</ul>

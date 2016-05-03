@@ -304,6 +304,8 @@ def get_stats():
     return {
         'good': (get_good_webms().count() - best),
         'bad': get_bad_webms().count(),
+        'music': get_music_webms().count(),
+        'held': get_held_webms().count(),
         'best': best,
         'pending': get_pending_webms().count(),
         'trash': get_trash_webms().count(),
@@ -362,8 +364,7 @@ def serve_random():
     webm = pending[randint(0, c-1)]
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=c, unpromotable=is_unpromotable(webm))
 
-#TODO(samstudio8) Currently always 404s
-@app.route('/', subdomain='good')
+@app.route('/', subdomain='decent')
 def serve_good():
     global delta
 
@@ -389,7 +390,7 @@ def serve_good():
     best=False
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=gc, best=best, held=hc, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
 
-@app.route('/', subdomain='decent')
+@app.route('/', subdomain='good')
 def serve_all_good():
     held = get_videos_of_status("held")
     c = held.count()
@@ -463,7 +464,7 @@ def mark_veto(webm):
 
 def mark_hold(webm):
     add_log(webm, 'held')
-    os.symlink('webms/all/' + webm, 'webms/good2/' + webm)
+    os.symlink('webms/all/' + webm, 'webms/held/' + webm)
 
 
 def unmark_good(webm):
@@ -603,14 +604,15 @@ if __name__ == '__main__':
 
     required_dirs = [
         'webms',
-        'webms/good',
+        'webms/all',
         'webms/bad',
-        'webms/trash',
         'webms/best',
-        'webms/good2',
+        'webms/good',
+        'webms/held',
         'webms/metadata',
-        'webms/veto',
         'webms/music'
+        'webms/trash',
+        'webms/veto',
     ]
     for directory in required_dirs:
         if not os.path.exists(directory):
