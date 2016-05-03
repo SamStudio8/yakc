@@ -22,7 +22,9 @@ try:
 except ImportError:
     pass
 else:
-    sentry = Sentry(app, release=SETTINGS.RELEASE)
+    release = raven.fetch_git_sha(os.path.dirname(__file__))
+    client = (release=release)
+    sentry = Sentry(app, client=client)
 
 if SETTINGS.PERF_LOG:
     #http://docs.sqlalchemy.org/en/rel_1_0/faq/performance.html
