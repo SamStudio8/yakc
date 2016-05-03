@@ -48,16 +48,37 @@ if SETTINGS.PERF_LOG:
         logger.debug("%s\tQuery Complete!" % datetime.now().strftime("%H:%M:%S.%f"))
         logger.debug("%s\tTotal Time: %f" % (datetime.now().strftime("%H:%M:%S.%f"), total))
 
+VALID_ACTIONS = [
+    "upload",
+    "view",
+    "good",
+    "bad",
+    "held",
+    "feature",
+    "demote",
+    "skip",
+]
+IMPORTANT_ACTIONS = [
+    "upload",
+    "good",
+    "bad",
+    "held",
+    "feature",
+    "demote",
+]
+
 class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     path = db.Column(db.String(255))
     name = db.Column(db.String(255), unique=True)
     nsfw = db.Column(db.Boolean)
+    last_action = db.Column(db.Integer)
 
-    def __init__(self, path, name, nsfw=False):
+    def __init__(self, path, name, last_action="upload", nsfw=False):
         self.path = path
         self.name = name
         self.nsfw = False
+        self.last_action = VALID_ACTIONS.index(last_action)
 
     def __repr__(self):
         return '<Video %r>' % (self.name)
@@ -72,7 +93,8 @@ class Video(db.Model):
             return None
 
 def get_videos_of_status(action_type):
-    return Video.query.join(Action).filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
+    #return Video.query.join(Action).filter(Action.important == True).order_by("timestamp desc").group_by(Action.video_id).having(Action.action == action_type)
+    return Video.query.filter(Video.last_action == VALID_ACTIONS.index(action_type))
 
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -105,7 +127,7 @@ class Action(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     address_id = db.Column(db.Integer, db.ForeignKey('address.id'))
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'))
-    action = db.Column(db.Enum("upload", "view", "good", "bad", "held", "feature", "demote", name="action_type_enum"))
+    action = db.Column(db.Integer) # Should probably be an FK...
     timestamp = db.Column(db.DateTime)
     important = db.Column(db.Boolean)
 
@@ -118,7 +140,7 @@ class Action(db.Model):
         self.action = action
         self.timestamp = datetime.utcnow()
 
-        if action in ["upload", "good", "bad", "held", "demote", "feature"]:
+        if action in IMPORTANT_ACTIONS:
             important = True
         self.important = important
 
@@ -566,12 +588,17 @@ def moderate_webm(domain=None):
 
     flash('Marked ' + webm.name + ' as ' + verdict)
 
+    record_verdict(webm, verdict)
+    return redirect('/', '303')
+    return redirect('/')
+
+def record_verdict(webm, verdict):
     if verdict not in ["unsure"]:
+        if verdict in IMPORTANT_ACTIONS:
+            webm.last_action = VALID_ACTIONS.index(verdict)
         address = Address.query.filter(Address.address == get_ip())[0]
         db.session.add(Action(address, webm, verdict))
         db.session.commit()
-    return redirect('/', '303')
-    return redirect('/')
 
 
 if __name__ == '__main__':
