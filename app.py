@@ -199,6 +199,7 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
+    return False
     actions = get_address_video_actions(get_ip(), webm.id)
 
     #if webm in get_best_webms():
@@ -486,31 +487,12 @@ def unmark_bad(webm):
     add_log(webm, 'forgiven')
     os.unlink('webms/bad/' + webm)
 
-def mark_music(webm):
-    global delta
-    delta += 3
-    os.unlink('webms/good/' + webm)
-    os.symlink('webms/all/' + webm, 'webms/music/' + webm)
-    add_log(webm, 'shunted')
-
 def unmark_music(webm):
     global delta
     delta -= 3
     os.unlink('webms/music/' + webm)
     os.symlink('webms/all/' + webm, 'webms/good/' + webm)
     add_log(webm, 'unshunted')
-
-def mark_best(webm):
-    global delta;
-    delta += 5
-    add_log(webm, 'featured ****')
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto('http://best.webm.website/' + webm + ' has been marked as "best" by ' + map_ips(get_ip(), get_ip()), (
-        'saraneth.lon.fluv.net',
-        41337
-    ))
-    os.symlink('webms/all/' + webm, 'webms/best/' + webm)
-
 
 @app.route('/moderate', methods=['POST'])
 @app.route('/moderate', methods=['POST'], subdomain='<domain>')
@@ -522,24 +504,42 @@ def moderate_webm(domain=None):
         abort(400, 'token mismatch')
 
     verdict = request.form['verdict']
+    address = get_address(get_ip())
+    un = address.address
+    if address.user:
+        un = address.user.username
+
+    # Translate verdicts if necessary
     if verdict == "unsure":
         verdict = "skip"
     elif verdict == "shunt":
         verdict = "music"
+    elif verdict == "keep":
+        verdict = "hold"
 
     if verdict not in VALID_ACTIONS:
         abort(400, 'invalid verdict')
 
-    #TODO(samstudio8) Check against valid verdicts
+    # Check verdict integrity
+    #TODO(samstudio8) Should probably check the user is actually permitted
     if verdict == 'feature':
         if is_unpromotable(webm):
             abort(400, 'not allowed to feature')
         if webm.get_last_important_action_type() != "good":
             abort(400, 'can only feature good webms')
-    if verdict == 'shunt':
+
+        if SETTINGS.NOTIFY_SERVER_NAME:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.sendto('http://best.' + SETTINGS.SERVER_NAME + '/' + webm.name + ' has been marked as "best" by ' + un, (
+                SETTINGS.NOTIFY_SERVER_NAME,
+                SETTINGS.NOTIFY_SERVER_PORT
+            ))
+    elif verdict == 'music':
         if webm.get_last_important_action_type() != "good":
             abort(400, 'can only shunt good webms')
-        verdict = "music"
+    elif verdict == "demote":
+        if webm.get_last_important_action_type() != "good":
+            abort(400, 'can only demote good webms')
     """
     elif verdict == 'unshunt':
         if webm in get_music_webms():
@@ -548,22 +548,6 @@ def moderate_webm(domain=None):
             abort(400, 'can only unshunt if shunted!')
     elif verdict == 'report':
         status = mark_ugly(webm)
-    elif verdict == 'demote':
-        if webm in get_good_webms():
-            unmark_good(webm)
-            flash('Demoted ' + webm)
-            return redirect('/', 303)
-        else:
-            abort(400, 'can only demote good webms')
-    elif verdict == 'feature':
-        if is_unpromotable(webm):
-            abort(400, 'not allowed to feature')
-        if webm in get_good_webms():
-            mark_best(webm)
-            flash('Promoted ' + webm)
-            return redirect('/', 303)
-        else:
-            abort(400, 'can only feature good webms')
     elif verdict == 'forgive':
         if webm in get_bad_webms():
             unmark_bad(webm)
@@ -584,10 +568,6 @@ def moderate_webm(domain=None):
                 abort(400, 'cannot veto things already in best')
         else:
             abort(400, 'can only veto good webms')
-    elif verdict == 'unsure':
-        # placebo
-        add_log(webm, 'skipped')
-        return redirect('/')
     elif verdict == 'affirm' or verdict == 'censure':
         if not is_votable(webm):
             if webm in get_best_webms():

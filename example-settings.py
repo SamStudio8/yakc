@@ -5,3 +5,5 @@ SERVER_PORT = 8000
 SECRET_KEY = "hoot"
 DATABASE_URI = "sqlite:////tmp/test.db"
 RELEASE = "Exemplary Eagle-Owl"
+NOTIFY_SERVER_NAME = "example.com"
+NOTIFY_SERVER_PORT = 9999
