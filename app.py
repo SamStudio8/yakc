@@ -19,12 +19,13 @@ db = SQLAlchemy(app)
 
 try:
     import raven
+    from raven.contrib.flask import Sentry
 except ImportError:
     pass
 else:
     release = raven.fetch_git_sha(os.path.dirname(__file__))
     client = raven.Client(release=release)
-    sentry = raven.contrib.flask.Sentry(app, client=client)
+    sentry = Sentry(app, client=client)
 
 if SETTINGS.PERF_LOG:
     #http://docs.sqlalchemy.org/en/rel_1_0/faq/performance.html
