@@ -18,13 +18,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = SETTINGS.DATABASE_URI
 db = SQLAlchemy(app)
 
 try:
-    from raven.contrib.flask import Sentry
+    import raven
 except ImportError:
     pass
 else:
     release = raven.fetch_git_sha(os.path.dirname(__file__))
     client = raven.Client(release=release)
-    sentry = Sentry(app, client=client)
+    sentry = raven.contrib.flask.Sentry(app, client=client)
 
 if SETTINGS.PERF_LOG:
     #http://docs.sqlalchemy.org/en/rel_1_0/faq/performance.html
