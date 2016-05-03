@@ -434,7 +434,7 @@ def serve_music():
     videos = get_videos_of_status("music")
     c = videos.count()
     if c == 0:
-        abort(404, 'You need to feature some webms!')
+        abort(404, 'You need to identify some musical webms!')
 
     webm = videos[randint(0, c-1)]
     return render_template('display.html', webm=webm, queue='music', token=generate_webm_token(webm), count=c)
@@ -447,12 +447,13 @@ def serve_best_index():
 
 @app.route('/', subdomain='bad')
 def serve_bad():
-    bad = get_videos_of_status("bad")
-    if len(bad) == 0:
-        abort(404, 'There are no bad webms.')
+    videos = get_videos_of_status("bad")
+    c = videos.count()
+    if c == 0:
+        abort(404, 'You need to dislike some webms!')
 
-    webm = bad[randint(0, len(bad)-1)]
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='bad', count=len(bad), stats=get_stats())
+    webm = videos[randint(0, c-1)]
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='bad', count=c, stats=get_stats())
 
 
 def mark_ugly(webm):
