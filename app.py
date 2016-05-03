@@ -431,13 +431,13 @@ def serve_best_nocensor():
 
 @app.route('/', subdomain='music')
 def serve_music():
-    try:
-        webms = get_music_webms()
-        webm = choice(webms)
-    except IndexError:
-        abort(404, 'You need to shunt some videos!')
-    token = generate_webm_token(webm)
-    return render_template('display.html', webm=webm, queue='music', token=token, count=len(webms))
+    videos = get_videos_of_status("music")
+    c = videos.count()
+    if c == 0:
+        abort(404, 'You need to feature some webms!')
+
+    webm = videos[randint(0, c-1)]
+    return render_template('display.html', webm=webm, queue='music', token=generate_webm_token(webm), count=c)
 
 @app.route('/', subdomain='index')
 def serve_best_index():
