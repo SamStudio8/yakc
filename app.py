@@ -22,7 +22,7 @@ try:
 except ImportError:
     pass
 else:
-    sentry = Sentry(app)
+    sentry = Sentry(app, release=SETTINGS.RELEASE)
 
 if SETTINGS.PERF_LOG:
     #http://docs.sqlalchemy.org/en/rel_1_0/faq/performance.html
