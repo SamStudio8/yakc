@@ -23,7 +23,7 @@ except ImportError:
     pass
 else:
     release = raven.fetch_git_sha(os.path.dirname(__file__))
-    client = (release=release)
+    client = raven.Client(release=release)
     sentry = Sentry(app, client=client)
 
 if SETTINGS.PERF_LOG:
