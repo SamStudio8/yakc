@@ -51,6 +51,14 @@ if SETTINGS.PERF_LOG:
         logger.debug("%s\tQuery Complete!" % datetime.now().strftime("%H:%M:%S.%f"))
         logger.debug("%s\tTotal Time: %f" % (datetime.now().strftime("%H:%M:%S.%f"), total))
 
+# NOTE
+# Always append *new* actions to the end of VALID_ACTIONS
+#   The list is used as a crap enum and thus the position
+#   of each element in the list refers to the integer
+#   used to store that action in the actual database.
+#   Arbitrarily inserting actions will damage integrity
+#   and cause future videos to be marked with different
+#   numbering schemes which would probably be ungood.
 VALID_ACTIONS = [
     "upload",
     "view",
@@ -62,6 +70,9 @@ VALID_ACTIONS = [
     "skip",
     "music",
 ]
+
+# List of VALID_ACTIONS that should be caught in the last_action
+# field of the Video ORM class. These actions permit filtering.
 IMPORTANT_ACTIONS = [
     "upload",
     "good",
