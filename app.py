@@ -60,6 +60,7 @@ VALID_ACTIONS = [
     "feature",
     "demote",
     "skip",
+    "music",
 ]
 IMPORTANT_ACTIONS = [
     "upload",
@@ -68,6 +69,7 @@ IMPORTANT_ACTIONS = [
     "held",
     "feature",
     "demote",
+    "music"
 ]
 
 class Video(db.Model):
@@ -519,6 +521,11 @@ def moderate_webm(domain=None):
         abort(400, 'token mismatch')
 
     verdict = request.form['verdict']
+    if verdict == "unsure":
+        verdict = "skip"
+    elif verdict == "shunt":
+        verdict = "music"
+
     if verdict not in VALID_ACTIONS:
         abort(400, 'invalid verdict')
 
