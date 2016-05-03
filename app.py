@@ -515,8 +515,8 @@ def moderate_webm(domain=None):
         abort(400, 'token mismatch')
 
     verdict = request.form['verdict']
-
-    status = None
+    if verdict not in VALID_ACTIONS:
+        abort(400, 'invalid verdict')
 
     #TODO(samstudio8) Check against valid verdicts
     if verdict == 'feature':
@@ -582,8 +582,6 @@ def moderate_webm(domain=None):
                 add_log(webm, verdict)
         else:
             abort(400, is_votable(webm))
-    else:
-        abort(400, 'invalid verdict')
     """
 
     flash('Marked ' + webm.name + ' as ' + verdict)
