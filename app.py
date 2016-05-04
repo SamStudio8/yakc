@@ -341,7 +341,7 @@ def serve_webm(name, domain=None):
     #elif webm.reported:
     #    abort(403, 'webm was reported')
 
-    address = Address.query.filter(Address.address == get_ip())[0]
+    address = get_address(get_ip())
     db.session.add(Action(address, webm, 'view'))
     db.session.commit()
     return send_from_directory('webms/all', name+".webm")
