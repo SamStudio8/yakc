@@ -388,6 +388,7 @@ def serve_good():
     best=False
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=gc, best=best, held=hc, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
 
+"""
 @app.route('/', subdomain='new.decent')
 def serve_unjudged_good():
     global delta
@@ -401,7 +402,7 @@ def serve_unjudged_good():
         else:
             held = len(get_held_webms())
         webm = choice(good)
-        if webm in get_best_webms():
+        if webm in get_videos_of_status("feature"):
             best = True
     except IndexError:
         abort(404, 'You need to promote some webms!')
@@ -410,7 +411,7 @@ def serve_unjudged_good():
         return redirect('/')
     else:
         return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), history=get_log(webm), debug=u'\u0394'+str(delta))
-
+"""
 
 @app.route('/', subdomain='good')
 def redirect_to_held():
@@ -419,7 +420,7 @@ def redirect_to_held():
 @app.route('/', subdomain='held')
 def serve_held():
     try:
-        good = get_held_webms()
+        good = get_videos_of_status("held")
         webm = choice(good)
     except IndexError:
         abort(404, 'There are no held webms.')
