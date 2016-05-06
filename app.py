@@ -262,10 +262,6 @@ def generate_webm_token(webm, salt=None):
         salt = uuid4().hex
     return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
 
-
-def get_all_webms():
-    return Video.query.all()
-
 #TODO(samstudio8) 404 on failure
 def get_video(name):
     try:
@@ -293,53 +289,17 @@ def get_address_video_actions(raw_ip, webm_id):
     return actions
 
 
-def get_good_webms():
-    return get_videos_of_status("good")
-
-def get_music_webms():
-    return get_videos_of_status("music", queue="music")
-
-
-def get_best_webms():
-    return get_videos_of_status("best")
-
-def get_vetoed_webms():
-    return os.listdir('webms/veto')
-
-
-def get_bad_webms():
-    return get_videos_of_status("bad")
-
-def get_safe_webms():
-    return Video.query.filter(Video.nsfw == False).all()
-
-def get_quality_webms():
-    """Allows whitelisting of reports to stop the top-tier webms being 403'd"""
-    return list(set(get_good_webms()).union(get_best_webms()))
-
-def get_pending_webms():
-    return get_videos_of_status("upload")
-
-def get_trash_webms():
-    return os.listdir('webms/trash')
-
-def get_held_webms():
-    return get_videos_of_status("held")
-
-
 def get_stats():
-    best = get_best_webms().count()
+    best = get_videos_of_status("best").count()
     return {
-        'good': (get_good_webms().count() - best),
-        'bad': get_bad_webms().count(),
-        'music': get_music_webms().count(),
-        'held': get_held_webms().count(),
+        'good': (get_videos_of_status("good") - best),
+        'bad': get_videos_of_status("bad").count(),
+        'music': get_videos_of_status("good", queue="music").count(),
+        'held': get_videos_of_status("held").count(),
         'best': best,
-        'pending': get_pending_webms().count(),
-        'trash': get_trash_webms().count(),
+        'pending': get_videos_of_status("upload").count(),
         'total': Video.query.count(),
     }
-
 
 @app.route('/<name>.webm', subdomain='<domain>')
 @app.route('/<name>.webm')
@@ -374,7 +334,7 @@ def show_webm(name, domain=None):
 
 @app.route('/')
 def serve_random():
-    pending = get_pending_webms()
+    pending = get_videos_of_status("upload")
     c = pending.count()
     if c == 0:
         abort(404, "No pending videos!")
@@ -435,7 +395,7 @@ def serve_best():
 @app.route('/', subdomain='top')
 def serve_best_nocensor():
     try:
-        webm = choice(get_best_webms())
+        webm = choice(get_videos_of_status("feature"))
     except IndexError:
         abort(404, 'There are no featured webms.')
     token = generate_webm_token(webm)
@@ -453,7 +413,7 @@ def serve_music():
 
 @app.route('/', subdomain='index')
 def serve_best_index():
-    webms = get_best_webms()
+    webms = get_videos_of_status("feature")
     return render_template('index.html', webms=webms)
 
 
