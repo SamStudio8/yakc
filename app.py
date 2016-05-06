@@ -515,7 +515,7 @@ def moderate_webm(domain=None):
 
         if SETTINGS.NOTIFY_SERVER_NAME:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto('http://best.' + SETTINGS.SERVER_NAME + '/' + webm.name + '.webm has been marked as "best" by ' + un, (
+            sock.sendto('http://best.' + SETTINGS.SERVER_NAME + '/' + webm.name + ' has been marked as "best" by ' + un, (
                 SETTINGS.NOTIFY_SERVER_NAME,
                 SETTINGS.NOTIFY_SERVER_PORT
             ))
