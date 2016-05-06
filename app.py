@@ -187,6 +187,18 @@ def map_ips(ip, default):
         addrs = json.load(fp)
         return addrs.get(ip, default)
 
+def md5_to_file(md5):
+    with open('webms/md5.txt', 'r') as fp:
+        strings = fp.read()
+        fp.close()
+    if strings is not None:
+        strings = strings.split('\n')
+        for string in strings:
+            string = string.split('  ')
+            if md5 == string[0]:
+                return string[1].split('/')[1]
+    return False
+
 
 def get_ip():
     ip = request.environ.get('HTTP_X_REAL_IP')
@@ -234,9 +246,11 @@ def is_unpromotable(webm):
     #if user.startswith('94.119'):
     #    return 'this shared IP address is banned'
 
-    if "good" in actions:
+    if "feature" in actions:
+        return 'already featured'
+    elif "good" in actions:
         return 'cannot feature own videos'
-    if "bad" in actions:
+    elif "bad" in actions:
         return 'you demoted this before!'
     return False
 
@@ -260,7 +274,7 @@ def is_votable(webm):
 def generate_webm_token(webm, salt=None):
     if not salt:
         salt = uuid4().hex
-    return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
+    return sha256(app.secret_key.encode() + webm.encode() + salt).hexdigest()+ ':' + salt
 
 #TODO(samstudio8) 404 on failure
 def get_video(name):
@@ -331,6 +345,13 @@ def show_webm(name, domain=None):
 
     return render_template('display.html', webm=webm, queue=queue, token=generate_webm_token(webm))
 
+@app.route('/md5/<md5>')
+def serve_md5(md5):
+    webm = md5_to_file(md5)
+    if webm:
+        return redirect(webm)
+    else:
+        abort(404, 'md5 match not found')
 
 @app.route('/')
 def serve_random():
@@ -367,11 +388,40 @@ def serve_good():
     best=False
     return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=gc, best=best, held=hc, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
 
+@app.route('/', subdomain='new.decent')
+def serve_unjudged_good():
+    global delta
+    best = None
+    held = 0
+    try:
+        good = get_unheld_good_webms()
+        if len(good) == 0:
+            delete_holding_queue()
+            good = get_unheld_good_webms()
+        else:
+            held = len(get_held_webms())
+        webm = choice(good)
+        if webm in get_best_webms():
+            best = True
+    except IndexError:
+        abort(404, 'You need to promote some webms!')
+    unpromotable = is_unpromotable(webm)
+    if unpromotable:
+        return redirect('/')
+    else:
+        return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=len(good), best=best, held=held, unpromotable=is_unpromotable(webm), stats=get_stats(), history=get_log(webm), debug=u'\u0394'+str(delta))
+
+
 @app.route('/', subdomain='good')
-def serve_all_good():
-    held = get_videos_of_status("held")
-    c = held.count()
-    if c == 0:
+def redirect_to_held():
+    return redirect('//held.' + app.config['SERVER_NAME'])
+
+@app.route('/', subdomain='held')
+def serve_held():
+    try:
+        good = get_held_webms()
+        webm = choice(good)
+    except IndexError:
         abort(404, 'There are no held webms.')
 
     webm = held[randint(0, c-1)]

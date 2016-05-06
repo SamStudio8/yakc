@@ -204,7 +204,8 @@ indefinitely                       censured videos go on your personal blacklist
 			}
 			input:disabled {
 				/* this probably looks terrible */
-				display: none;
+				/* display: none; */
+				border-style: inset;
 			}
 			.clear {
 				clear:both;
@@ -227,7 +228,7 @@ indefinitely                       censured videos go on your personal blacklist
                 <input type="hidden" name="shunt" value="music">
 
 				{% if not queue %}
-					{% if unpromotable %}
+					{% if unpromotable and unpromotable != 'you held this last time'%}
 					<input class="good left" type="submit" title="[cannot feature: {{ unpromotable }}]" name="verdict" value="good" disabled>
 					<input class="ugly" type="submit" title="I'm not sure where this video should be (skip)" name="verdict" value="unsure">
 					<input class="bad right" type="submit" title="[cannot demote: {{ unpromotable }}]" name="verdict" value="bad" disabled>
@@ -240,10 +241,10 @@ indefinitely                       censured videos go on your personal blacklist
 					<input class="good" type="submit" title="Move back to 'good' (unshunt)" name="verdict" value="unshunt">
 				{% elif queue == 'good' %}
 					<div>
-					{% if unpromotable %}
+					{% if unpromotable  %}
 						<input class="best left" type="submit" title="[cannot feature: {{ unpromotable }}]" name="verdict" value="feature" disabled>
 						<input class="good" type="submit" title="[cannot veto: {{ unpromotable }}]" name="verdict" value="nsfw" disabled>
-						{% if unpromotable == 'this video has been vetoed' or unpromotable == 'cannot feature own videos' %}
+						{% if unpromotable == 'you held this last time' or unpromotable == 'this video has been vetoed' or unpromotable == 'cannot feature own videos' %}
 							<input class="music" id="js-shunt" type="submit" title="Mark as good music (shunt)" name="verdict" value="shunt">
 						{% else %}
 							<input class="music" id="js-shunt" type="submit" title="[cannot shunt: {{ unpromotable }}]" name="verdict" value="shunt" disabled>
@@ -256,7 +257,7 @@ indefinitely                       censured videos go on your personal blacklist
 						<!-- <input class="good right" type="submit" title="Prevent this video from entering 'best' (veto)" name="verdict" value="veto"> -->
 					{% endif %}
 					</div>
-						{% if unpromotable == 'cannot feature own videos' %}
+						{% if unpromotable == 'cannot feature own videos' or unpromotable == 'you held this last time' %}
 						<input class="held" type="submit" title="[cannot hold: {{ unpromotable }}]" name="verdict" value="hold" disabled>
 						{% elif unpromotable == 'you demoted this before!'  %}
 							<input class="held" type="submit" title="[cannot hold: you tried to demote this video]" name="verdict" value="hold" disabled>

@@ -17,3 +17,7 @@ remove them from rotation and prevent them from being served.
 ### Configuration
 
 Set appropriate values in `example-settings.py` and save as `settings.py`.
+
+### MD5 Lookup
+For MD5 lookup to work, you need to precompute the hashes.
+To do so, run `md5sum all/*.webm | tee md5.txt`.
