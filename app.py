@@ -356,31 +356,20 @@ def serve_webm(name, domain=None):
     address = get_address(get_ip())
     db.session.add(Action(address, webm, 'view'))
     db.session.commit()
-    return send_from_directory('webms/all', name+".webm")
+    return send_from_directory('webms/all', webm.path)
 
 
 @app.route('/<name>', subdomain='<domain>')
 @app.route('/<name>')
 def show_webm(name, domain=None):
-    name = name + '.webm'
-    queue = 'pending'
-    token = None
-    if name not in get_all_webms():
-        abort(404)
-    elif name not in get_safe_webms():
-        if name not in get_quality_webms():
-            abort(403)
-    if name in get_best_webms():
-        queue = 'best'
-    elif name in get_music_webms():
-        queue = 'music'
-    elif name in get_good_webms():
-        queue = 'good'
-    elif name in get_bad_webms():
-        queue = 'bad'
-        token = generate_webm_token(name)
+    webm = get_video(name)
+    if not webm:
+        abort(404, 'Cannot find that webm!')
 
-    return render_template('display.html', webm=name, queue=queue, token=token)
+    queue = webm.get_last_important_action_type()
+    #TODO Check nsfw/quality
+
+    return render_template('display.html', webm=webm, queue=queue, token=generate_webm_token(webm))
 
 
 @app.route('/')
@@ -526,7 +515,7 @@ def moderate_webm(domain=None):
 
         if SETTINGS.NOTIFY_SERVER_NAME:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto('http://best.' + SETTINGS.SERVER_NAME + '/' + webm.name + ' has been marked as "best" by ' + un, (
+            sock.sendto('http://best.' + SETTINGS.SERVER_NAME + '/' + webm.name + '.webm has been marked as "best" by ' + un, (
                 SETTINGS.NOTIFY_SERVER_NAME,
                 SETTINGS.NOTIFY_SERVER_PORT
             ))
