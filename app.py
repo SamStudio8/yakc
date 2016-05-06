@@ -68,7 +68,7 @@ VALID_ACTIONS = [
     "feature",
     "demote",
     "skip",
-    "music",
+    "shunt",
 ]
 
 # List of VALID_ACTIONS that should be caught in the last_action
@@ -80,6 +80,10 @@ IMPORTANT_ACTIONS = [
     "held",
     "feature",
     "demote",
+]
+
+QUEUES = [
+    "master",
     "music"
 ]
 
@@ -89,12 +93,14 @@ class Video(db.Model):
     name = db.Column(db.String(255), unique=True)
     nsfw = db.Column(db.Boolean)
     last_action = db.Column(db.Integer)
+    queue = db.Column(db.Integer)
 
-    def __init__(self, path, name, last_action="upload", nsfw=False):
+    def __init__(self, path, name, queue=0, last_action="upload", nsfw=False):
         self.path = path
         self.name = name
-        self.nsfw = False
+        self.queue = 0
         self.last_action = VALID_ACTIONS.index(last_action)
+        self.nsfw = False
 
     def __repr__(self):
         return '<Video %r>' % (self.name)
@@ -108,8 +114,8 @@ class Video(db.Model):
         except IndexError:
             return None
 
-def get_videos_of_status(action_type):
-    return Video.query.filter(Video.last_action == VALID_ACTIONS.index(action_type))
+def get_videos_of_status(action_type, queue="master"):
+    return Video.query.filter(Video.queue == QUEUES.index(queue), Video.last_action == VALID_ACTIONS.index(action_type))
 
 class Address(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -285,7 +291,7 @@ def get_good_webms():
     return get_videos_of_status("good")
 
 def get_music_webms():
-    return get_videos_of_status("music")
+    return get_videos_of_status("music", queue="music")
 
 
 def get_best_webms():
@@ -442,7 +448,7 @@ def serve_best_nocensor():
 
 @app.route('/', subdomain='music')
 def serve_music():
-    videos = get_videos_of_status("music")
+    videos = get_videos_of_status("good", queue="music")
     c = videos.count()
     if c == 0:
         abort(404, 'You need to identify some musical webms!')
@@ -479,31 +485,6 @@ def mark_veto(webm):
     os.symlink('webms/all/' + webm, 'webms/veto/' + webm)
 
 
-def mark_hold(webm):
-    add_log(webm, 'held')
-    os.symlink('webms/all/' + webm, 'webms/held/' + webm)
-
-
-def unmark_good(webm):
-    global delta;
-    delta -= 1
-    add_log(webm, 'demoted')
-    os.unlink('webms/good/' + webm)
-
-
-def unmark_bad(webm):
-    global delta;
-    delta += 1
-    add_log(webm, 'forgiven')
-    os.unlink('webms/bad/' + webm)
-
-def unmark_music(webm):
-    global delta
-    delta -= 3
-    os.unlink('webms/music/' + webm)
-    os.symlink('webms/all/' + webm, 'webms/good/' + webm)
-    add_log(webm, 'unshunted')
-
 @app.route('/moderate', methods=['POST'])
 @app.route('/moderate', methods=['POST'], subdomain='<domain>')
 def moderate_webm(domain=None):
@@ -514,6 +495,7 @@ def moderate_webm(domain=None):
         abort(400, 'token mismatch')
 
     verdict = request.form['verdict']
+
     address = get_address(get_ip())
     un = address.address
     if address.user:
@@ -522,8 +504,6 @@ def moderate_webm(domain=None):
     # Translate verdicts if necessary
     if verdict == "unsure":
         verdict = "skip"
-    elif verdict == "shunt":
-        verdict = "music"
     elif verdict == "keep":
         verdict = "hold"
 
@@ -588,7 +568,11 @@ def moderate_webm(domain=None):
 
     flash('Marked ' + webm.name + ' as ' + verdict)
 
+    if verdict == "shunt":
+        new_queue = request.form['shunt']
+        shunt_webm(webm, new_queue)
     record_verdict(webm, verdict)
+
     return redirect('/', '303')
     return redirect('/')
 
@@ -600,6 +584,11 @@ def record_verdict(webm, verdict):
         db.session.add(Action(address, webm, verdict))
         db.session.commit()
 
+def shunt_webm(webm, new_queue):
+    if new_queue not in QUEUES:
+        abort(403, 'invalid queue')
+    webm.queue = QUEUES.index(new_queue)
+    db.session.commit()
 
 if __name__ == '__main__':
 

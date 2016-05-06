@@ -224,6 +224,7 @@ indefinitely                       censured videos go on your personal blacklist
 			{% if token %}
 				<input type="hidden" name="token" value="{{ token }}">
 				<input type="hidden" name="webm" value="{{ webm.path }}">
+                <input type="hidden" name="shunt" value="music">
 
 				{% if not queue %}
 					{% if unpromotable %}
