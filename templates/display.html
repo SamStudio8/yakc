@@ -323,11 +323,11 @@ indefinitely                       censured videos go on your personal blacklist
 		</form>
 		{% endif %}
 {% if webm.actions %}
-<pre class="history">
+<ol class="history">
         {% for entry in webm.actions %}
-            {{ entry }}
+            <li>{{ entry }}</li>
         {% endfor %}
-</pre>
+</ol>
 {% endif %}
 <a class="github" title="View source" href="https://github.com/zuzak/yakc"></a>
 {% if debug %}
