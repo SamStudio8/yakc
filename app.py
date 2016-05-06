@@ -152,14 +152,17 @@ class Action(db.Model):
     timestamp = db.Column(db.DateTime)
     important = db.Column(db.Boolean)
 
+    note = db.Column(db.String(64))
+
     address = db.relationship('Address', backref=db.backref('actions', lazy='dynamic'))
     video = db.relationship('Video', backref=db.backref('actions', lazy='dynamic'), lazy="joined")
 
-    def __init__(self, address, video, action, important=False):
+    def __init__(self, address, video, action, note="", important=False):
         self.address_id = address.id
         self.video_id = video.id
         self.action = action
         self.timestamp = datetime.utcnow()
+        self.note = note
 
         if action in IMPORTANT_ACTIONS:
             important = True
@@ -171,7 +174,11 @@ class Action(db.Model):
             un = self.address.user.username
         else:
             un = self.address.address
-        return "%s - %s by %s" % (stamp, self.action, un)
+
+        if self.note:
+            return "%s - %s (%s) by %s" % (stamp, self.action, self.note, un)
+        else:
+            return "%s - %s by %s" % (stamp, self.action, un)
 
 delta = 0
 
@@ -568,20 +575,22 @@ def moderate_webm(domain=None):
 
     flash('Marked ' + webm.name + ' as ' + verdict)
 
+    note = ""
     if verdict == "shunt":
         new_queue = request.form['shunt']
         shunt_webm(webm, new_queue)
-    record_verdict(webm, verdict)
+        note = "to %s" % new_queue
+    record_verdict(webm, verdict, note)
 
     return redirect('/', '303')
     return redirect('/')
 
-def record_verdict(webm, verdict):
+def record_verdict(webm, verdict, note=""):
     if verdict not in ["unsure"]:
         if verdict in IMPORTANT_ACTIONS:
             webm.last_action = VALID_ACTIONS.index(verdict)
         address = Address.query.filter(Address.address == get_ip())[0]
-        db.session.add(Action(address, webm, verdict))
+        db.session.add(Action(address, webm, verdict, note))
         db.session.commit()
 
 def shunt_webm(webm, new_queue):
