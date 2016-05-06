@@ -222,7 +222,6 @@ def get_user_censured(webm):
 
 
 def is_unpromotable(webm):
-    return False
     actions = get_address_video_actions(get_ip(), webm.id)
 
     #if webm in get_best_webms():
