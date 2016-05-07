@@ -304,15 +304,16 @@ def get_address_video_actions(raw_ip, webm_id):
 
 
 def get_stats():
-    best = get_videos_of_status("best").count()
+    best = get_videos_of_status("feature").count()
     return {
-        'good': (get_videos_of_status("good") - best),
+        'good': (get_videos_of_status("good").count() - best),
         'bad': get_videos_of_status("bad").count(),
         'music': get_videos_of_status("good", queue="music").count(),
         'held': get_videos_of_status("held").count(),
         'best': best,
         'pending': get_videos_of_status("upload").count(),
         'total': Video.query.count(),
+        "trash": 0
     }
 
 @app.route('/<name>.webm', subdomain='<domain>')
@@ -360,7 +361,7 @@ def serve_random():
     if c == 0:
         abort(404, "No pending videos!")
     webm = pending[randint(0, c-1)]
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=c, unpromotable=is_unpromotable(webm))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), count=c, unpromotable=is_unpromotable(webm), stats=get_stats())
 
 @app.route('/', subdomain='decent')
 def serve_good():
@@ -386,7 +387,7 @@ def serve_good():
     #if webm in get_best_webms():
     #    best = True
     best=False
-    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=gc, best=best, held=hc, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta))
+    return render_template('display.html', webm=webm, token=generate_webm_token(webm), queue='good', count=gc, best=best, held=hc, unpromotable=is_unpromotable(webm), debug=u'\u0394'+str(delta), stats=get_stats())
 
 """
 @app.route('/', subdomain='new.decent')
@@ -419,14 +420,13 @@ def redirect_to_held():
 
 @app.route('/', subdomain='held')
 def serve_held():
-    try:
-        good = get_videos_of_status("held")
-        webm = choice(good)
-    except IndexError:
-        abort(404, 'There are no held webms.')
+    held = get_videos_of_status("held")
+    c = held.count()
+    if c == 0:
+        abort(404, 'You need to hold some webms!')
 
     webm = held[randint(0, c-1)]
-    return render_template('display.html', webm=webm, queue='good', stats=get_stats())
+    return render_template('display.html', webm=webm, queue='held', stats=get_stats())
 
 
 @app.route('/', subdomain='best')
@@ -440,7 +440,7 @@ def serve_best():
 
     #if get_user_censured(webm):
     #    return redirect('/', 302)
-    return render_template('display.html', webm=webm, queue='best', token=generate_webm_token(webm), unpromotable=is_votable(webm))
+    return render_template('display.html', webm=webm, queue='best', token=generate_webm_token(webm), unpromotable=is_votable(webm), stats=get_stats())
 
 
 @app.route('/', subdomain='top')
