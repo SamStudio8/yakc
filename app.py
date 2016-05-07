@@ -274,7 +274,7 @@ def is_votable(webm):
 def generate_webm_token(webm, salt=None):
     if not salt:
         salt = uuid4().hex
-    return sha256(app.secret_key.encode() + webm.encode() + salt).hexdigest()+ ':' + salt
+    return sha256(app.secret_key.encode() + webm.name.encode() + salt).hexdigest()+ ':' + salt
 
 #TODO(samstudio8) 404 on failure
 def get_video(name):
