@@ -1,6 +1,7 @@
 from flask import (Flask, send_from_directory, abort,
                   render_template, request, flash, redirect)
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from random import choice, random, randint
 from uuid import uuid4
 from datetime import datetime
@@ -304,17 +305,17 @@ def get_address_video_actions(raw_ip, webm_id):
 
 
 def get_stats():
-    best = get_videos_of_status("feature").count()
-    return {
-        'good': (get_videos_of_status("good").count() - best),
-        'bad': get_videos_of_status("bad").count(),
-        'music': get_videos_of_status("good", queue="music").count(),
-        'held': get_videos_of_status("held").count(),
-        'best': best,
-        'pending': get_videos_of_status("upload").count(),
-        'total': Video.query.count(),
-        "trash": 0
-    }
+    stats = {}
+    seen = []
+    for t in db.session.query(Video.last_action, func.count(Video.last_action)).group_by(Video.last_action).all():
+        stats[VALID_ACTIONS[t[0]]] = t[1]
+        seen.append(VALID_ACTIONS[t[0]])
+    for action in VALID_ACTIONS:
+        if action not in seen:
+            stats[action] = 0
+    stats["total"] = Video.query.count()
+    stats["trash"] = 0
+    return stats
 
 @app.route('/<name>.webm', subdomain='<domain>')
 @app.route('/<name>.webm')
